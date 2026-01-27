@@ -51,10 +51,11 @@ async function signJWT(
     ["sign"]
   );
 
+  const signingData = strToUint8Array(signingInput);
   const signature = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
     cryptoKey,
-    strToUint8Array(signingInput)
+    signingData.buffer as ArrayBuffer
   );
 
   const signatureEncoded = base64UrlEncode(new Uint8Array(signature));

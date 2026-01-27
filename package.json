@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "preview": "opennextjs-cloudflare build && wrangler dev",
+    "deploy": "opennextjs-cloudflare build && wrangler deploy",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.16.0",
