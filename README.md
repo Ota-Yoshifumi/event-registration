@@ -55,11 +55,28 @@ npm install
 npm run dev
 ```
 
-## デプロイ（Cloudflare Pages）
+## デプロイ（Cloudflare）
+
+### コマンドでデプロイする場合
 
 ```bash
 npm run deploy
 ```
+
+※ OpenNext では `opennextjs-cloudflare deploy` の利用を推奨しています。`package.json` の deploy スクリプトを `opennextjs-cloudflare build && opennextjs-cloudflare deploy` にするとキャッシュの投入も行われます。
+
+### Cloudflare Pages（Git 連携）でビルドしている場合
+
+ビルドは成功するがルート（`/`）で 404 になる場合は、次を確認してください。
+
+1. **ビルドコマンド**  
+   Cloudflare のビルド設定で以下を使うこと。  
+   `next build` だけでは Worker 用の出力にならないため 404 になります。
+   ```bash
+   npx opennextjs-cloudflare build
+   ```
+2. **wrangler.toml**  
+   `[[services]]` の `WORKER_SELF_REFERENCE` と `compatibility_flags` の `global_fetch_strictly_public` が設定されていること（未設定だとルート等で 404 になることがあります）。
 
 環境変数は Cloudflare ダッシュボードまたは `wrangler secret put` で設定してください。
 

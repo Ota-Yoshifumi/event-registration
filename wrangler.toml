@@ -1,11 +1,16 @@
 name = "event-registration"
 compatibility_date = "2025-05-05"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 main = ".open-next/worker.js"
 
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"
+
+# OpenNext が内部で Worker 自身にリクエストを転送するために必須（未設定だとルート等で 404 になる）
+[[services]]
+binding = "WORKER_SELF_REFERENCE"
+service = "event-registration"
 
 [vars]
 NEXT_PUBLIC_APP_URL = "https://event-registration.pages.dev"
