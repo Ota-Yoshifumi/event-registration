@@ -51,7 +51,22 @@ export default async function SeminarDetailPage({
         ← セミナー一覧に戻る
       </Link>
 
-      <Card>
+      <Card className="overflow-hidden">
+        {seminar.image_url && (
+          <div className="h-56 overflow-hidden bg-gray-100">
+            <img
+              src={seminar.image_url.replace(
+                /\/file\/d\/([^/]+)\/view/,
+                "/file/d/$1/export?format=png"
+              )}
+              alt={seminar.title}
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).parentElement!.style.display = "none";
+              }}
+            />
+          </div>
+        )}
         <CardHeader>
           <div className="flex items-start justify-between gap-2">
             <CardTitle className="text-2xl">{seminar.title}</CardTitle>
@@ -107,6 +122,25 @@ export default async function SeminarDetailPage({
               <span>{isFull ? "なし" : `${remaining}名`}</span>
             </div>
           </div>
+
+          {seminar.meet_url && (seminar.format === "online" || seminar.format === "hybrid") && (
+            <div className="rounded-lg border bg-blue-50 p-4">
+              <p className="mb-2 text-sm font-medium text-blue-800">参加方法</p>
+              <p className="mb-1 text-xs text-blue-600">
+                {seminar.format === "online"
+                  ? "オンライン開催です。以下のリンクから参加できます。"
+                  : "ハイブリッド開催です。オンライン参加の場合は以下のリンクを使用してください。"}
+              </p>
+              <a
+                href={seminar.meet_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-700 hover:underline break-all"
+              >
+                {seminar.meet_url}
+              </a>
+            </div>
+          )}
 
           {!isFull && !isPast && (
             <Link href={`/seminars/${seminar.id}/booking`}>

@@ -13,6 +13,24 @@ async function getSeminar(id: string): Promise<Seminar | null> {
   return res.json();
 }
 
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+const FORMAT_LABEL: Record<string, string> = {
+  venue: "会場",
+  online: "オンライン",
+  hybrid: "ハイブリッド",
+};
+
 export default async function BookingPage({
   params,
 }: {
@@ -43,6 +61,8 @@ export default async function BookingPage({
     );
   }
 
+  const remaining = seminar.capacity - seminar.current_bookings;
+
   return (
     <div className="mx-auto max-w-lg">
       <Link
@@ -54,10 +74,42 @@ export default async function BookingPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>予約フォーム</CardTitle>
-          <p className="text-sm text-muted-foreground">{seminar.title}</p>
+          <CardTitle>申し込み</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
+          {/* セミナー情報サマリー */}
+          <div className="rounded-lg bg-gray-50 p-4 space-y-2">
+            <h3 className="font-semibold text-base">{seminar.title}</h3>
+            <div className="space-y-1 text-sm text-gray-600">
+              <div className="flex justify-between">
+                <span>開催日時</span>
+                <span>{formatDate(seminar.date)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>所要時間</span>
+                <span>{seminar.duration_minutes}分</span>
+              </div>
+              <div className="flex justify-between">
+                <span>登壇者</span>
+                <span>
+                  {seminar.speaker}
+                  {seminar.speaker_title ? `（${seminar.speaker_title}）` : ""}
+                </span>
+              </div>
+              {seminar.format && (
+                <div className="flex justify-between">
+                  <span>開催形式</span>
+                  <span>{FORMAT_LABEL[seminar.format] || seminar.format}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span>残席</span>
+                <span>{remaining}名</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 申し込みフォーム */}
           <BookingForm seminarId={id} />
         </CardContent>
       </Card>

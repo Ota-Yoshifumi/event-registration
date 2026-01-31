@@ -83,6 +83,14 @@ export default async function ConfirmationPage({
             </Link>
           )}
 
+          {rid && (
+            <Link href={`/seminars/${id}/manage?rid=${rid}`} className="block">
+              <Button className="w-full" variant="outline">
+                予約の変更・キャンセル
+              </Button>
+            </Link>
+          )}
+
           <Link href="/seminars" className="block">
             <Button className="w-full" variant="secondary">
               セミナー一覧に戻る

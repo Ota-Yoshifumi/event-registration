@@ -28,12 +28,29 @@ export function SeminarCard({ seminar }: SeminarCardProps) {
   const remaining = seminar.capacity - seminar.current_bookings;
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col overflow-hidden">
+      {seminar.image_url && (
+        <div className="h-40 overflow-hidden bg-gray-100">
+          <img
+            src={seminar.image_url.replace(
+              /\/file\/d\/([^/]+)\/view/,
+              "/file/d/$1/export?format=png"
+            )}
+            alt={seminar.title}
+            className="h-full w-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).parentElement!.style.display = "none";
+            }}
+          />
+        </div>
+      )}
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-lg">{seminar.title}</CardTitle>
-          {isFull && <Badge variant="destructive">満席</Badge>}
-          {isPast && <Badge variant="secondary">終了</Badge>}
+          <div className="flex gap-1 shrink-0">
+            {isFull && <Badge variant="destructive">満席</Badge>}
+            {isPast && <Badge variant="secondary">終了</Badge>}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="flex-1">
