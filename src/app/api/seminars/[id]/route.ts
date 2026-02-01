@@ -6,7 +6,10 @@ import type { Seminar } from "@/lib/types";
 // マスタースプレッドシート列順: A~R (id ~ updated_at、M:肩書き N:開催形式 O:対象 P:画像URL)
 
 function rowToSeminar(row: string[]): Seminar {
-  const isNewLayout = row.length >= 18;
+  // Google Sheets APIは末尾の空セルを省略するため、row.length >= 18 で判定するのは不正確。
+  // M列(インデックス12)が肩書き・N列(13)が開催形式の値になっているか確認する。
+  const formatVal = row[13];
+  const isNewLayout = formatVal === "venue" || formatVal === "online" || formatVal === "hybrid";
   return {
     id: row[0] || "",
     title: row[1] || "",
