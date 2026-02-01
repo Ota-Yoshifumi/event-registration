@@ -6,12 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import type { Seminar } from "@/lib/types";
 
 async function getSeminar(id: string): Promise<Seminar | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const res = await fetch(`${baseUrl}/api/seminars/${id}`, {
-    cache: "no-store",
-  });
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const res = await fetch(`${baseUrl}/api/seminars/${id}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
 }
 
 function formatDate(dateStr: string): string {
@@ -52,21 +56,23 @@ export default async function SeminarDetailPage({
       </Link>
 
       <Card className="overflow-hidden">
-        {seminar.image_url && (
-          <div className="h-56 overflow-hidden bg-gray-100">
-            <img
-              src={seminar.image_url.replace(
-                /\/file\/d\/([^/]+)\/view/,
-                "/file/d/$1/export?format=png"
-              )}
-              alt={seminar.title}
-              className="h-full w-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).parentElement!.style.display = "none";
-              }}
-            />
-          </div>
-        )}
+        <div className="h-56 overflow-hidden bg-gray-100">
+          <img
+            src={
+              seminar.image_url
+                ? seminar.image_url.replace(
+                    /\/file\/d\/([^/]+)\/view/,
+                    "/file/d/$1/export?format=png"
+                  )
+                : "/9553.png"
+            }
+            alt={seminar.title}
+            className="h-full w-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = "/9553.png";
+            }}
+          />
+        </div>
         <CardHeader>
           <div className="flex items-start justify-between gap-2">
             <CardTitle className="text-2xl">{seminar.title}</CardTitle>
