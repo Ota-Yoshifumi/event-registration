@@ -50,7 +50,7 @@ export default async function SeminarDetailPage({
               seminar.image_url
                 ? seminar.image_url.replace(
                     /\/file\/d\/([^/]+)\/view/,
-                    "/file/d/$1/export?format=png"
+                    "https://drive.google.com/uc?export=download&id=$1"
                   )
                 : "/9553.png"
             }

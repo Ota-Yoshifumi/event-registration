@@ -103,7 +103,7 @@ export default function SeminarImagePage({
                 <img
                   src={seminar.image_url.replace(
                     /\/file\/d\/([^/]+)\/view/,
-                    "/file/d/$1/export?format=png"
+                    "https://drive.google.com/uc?export=download&id=$1"
                   )}
                   alt={seminar.title}
                   className="w-full max-h-64 object-contain"
