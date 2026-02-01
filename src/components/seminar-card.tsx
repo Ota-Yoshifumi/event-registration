@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -88,11 +87,11 @@ export function SeminarCard({ seminar }: SeminarCardProps) {
         </div>
       </CardContent>
       <CardFooter>
-        <Link href={`/seminars/${seminar.id}`} className="w-full">
+        <a href={`/seminars/${seminar.id}`} className="w-full">
           <Button className="w-full" disabled={isFull || isPast}>
             {isFull ? "満席" : isPast ? "終了" : "詳細・予約"}
           </Button>
-        </Link>
+        </a>
       </CardFooter>
     </Card>
   );

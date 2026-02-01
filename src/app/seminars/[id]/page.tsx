@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,12 +36,12 @@ export default async function SeminarDetailPage({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link
+      <a
         href="/seminars"
         className="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground"
       >
         ← セミナー一覧に戻る
-      </Link>
+      </a>
 
       <Card className="overflow-hidden">
         <div className="h-56 overflow-hidden bg-gray-100">
@@ -138,11 +137,11 @@ export default async function SeminarDetailPage({
           )}
 
           {!isFull && !isPast && (
-            <Link href={`/seminars/${seminar.id}/booking`}>
+            <a href={`/seminars/${seminar.id}/booking`}>
               <Button className="w-full" size="lg">
                 予約する
               </Button>
-            </Link>
+            </a>
           )}
 
           {isFull && (
