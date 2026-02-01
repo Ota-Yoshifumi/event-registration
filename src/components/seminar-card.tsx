@@ -12,6 +12,8 @@ import { ja } from "date-fns/locale";
 interface SeminarCardProps {
   seminar: Seminar;
   index: number;
+  /** カードクリック時に呼ばれるコールバック */
+  onSelect: (seminar: Seminar) => void;
 }
 
 /** Google Drive ファイルURLを直接画像URL に変換 */
@@ -39,7 +41,7 @@ const formatColors: Record<string, string> = {
   hybrid: "bg-pink-500 text-white",
 };
 
-export function SeminarCard({ seminar, index }: SeminarCardProps) {
+export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
   const isFull = seminar.current_bookings >= seminar.capacity;
   const isPast = new Date(seminar.date) < new Date();
   const spotsLeft = seminar.capacity - seminar.current_bookings;
@@ -53,7 +55,13 @@ export function SeminarCard({ seminar, index }: SeminarCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.1 }}
     >
-      <a href={`/seminars/${seminar.id}`}>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelect(seminar)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(seminar); } }}
+        className="cursor-pointer"
+      >
         <Card className="group overflow-hidden hover:shadow-2xl transition-all duration-300 border-0 bg-card flex flex-col h-full">
           {/* 画像エリア */}
           <div className="relative h-48 overflow-hidden">
@@ -166,12 +174,10 @@ export function SeminarCard({ seminar, index }: SeminarCardProps) {
               </div>
               <Button
                 size="sm"
-                disabled={isFull || isPast}
                 className="rounded-full text-white"
                 style={{
-                  background: isFull || isPast
-                    ? undefined
-                    : "linear-gradient(to right, hsl(262, 83%, 58%), hsl(330, 81%, 60%))",
+                  background:
+                    "linear-gradient(to right, hsl(262, 83%, 58%), hsl(330, 81%, 60%))",
                 }}
               >
                 詳細を見る
@@ -180,7 +186,7 @@ export function SeminarCard({ seminar, index }: SeminarCardProps) {
             </div>
           </CardContent>
         </Card>
-      </a>
+      </div>
     </motion.div>
   );
 }
