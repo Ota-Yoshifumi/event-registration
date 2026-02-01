@@ -124,6 +124,14 @@ export default function EditSeminarPage({
                 defaultValue={seminar.description}
                 rows={4}
               />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/admin/seminars/${id}/image`)}
+              >
+                画像登録
+              </Button>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -272,16 +280,9 @@ export default function EditSeminarPage({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.push(`/admin/seminars/${id}/image`)}
+                onClick={() => router.push("/admin/seminars")}
               >
-                画像登録
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.back()}
-              >
-                キャンセル
+                一覧に戻る
               </Button>
             </div>
           </form>

@@ -13,4 +13,4 @@ binding = "WORKER_SELF_REFERENCE"
 service = "event-registration"
 
 [vars]
-NEXT_PUBLIC_APP_URL = "https://event-registration.pages.dev"
+NEXT_PUBLIC_APP_URL = "https://event-registration.y-ota.workers.dev"
