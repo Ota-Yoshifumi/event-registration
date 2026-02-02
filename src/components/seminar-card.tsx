@@ -63,12 +63,12 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
         className="cursor-pointer"
       >
         <Card className="group overflow-hidden hover:shadow-2xl transition-all duration-300 border-0 bg-card flex flex-col h-full">
-          {/* 画像エリア */}
-          <div className="relative h-48 overflow-hidden">
+          {/* 画像エリア（16:9固定、白背景） */}
+          <div className="relative w-full aspect-[16/9] overflow-hidden bg-white">
             <img
               src={resolveImageUrl(seminar.image_url)}
               alt={seminar.title}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "/9553.png";
               }}
