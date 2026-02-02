@@ -114,7 +114,7 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
         transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
         className="fixed inset-0 z-[101] flex justify-center overflow-y-auto"
       >
-        <div className="force-light w-full lg:w-[70%] min-h-full bg-background text-foreground relative">
+        <div className="w-full lg:w-[70%] min-h-full bg-white text-gray-900 relative">
           {/* 閉じるボタン */}
           <button
             onClick={handleClose}
@@ -135,7 +135,7 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
               }}
             />
             {/* グラデーション遮光 */}
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-white via-white/50 to-transparent" />
 
             {/* タイトルオーバーライ */}
             <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12">
@@ -147,7 +147,7 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
                   {formatLabel(seminar.format)}
                 </Badge>
                 {/* タイトル */}
-                <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
+                <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">
                   {seminar.title}
                 </h2>
                 {/* 対象バッジ */}
@@ -171,7 +171,7 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
               {/* 左カラム: 概要・特徴・講師 */}
               <div className="lg:col-span-2 space-y-8">
                 {/* セミナー概要 */}
-                <Card className="border border-border shadow-xl">
+                <Card className="bg-white border border-gray-200 shadow-xl">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-primary" />
@@ -179,14 +179,14 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-muted-foreground leading-relaxed text-lg">
+                    <p className="text-gray-600 leading-relaxed text-lg">
                       {seminar.description}
                     </p>
                   </CardContent>
                 </Card>
 
                 {/* このセミナーの特徴 */}
-                <Card className="border border-border shadow-xl">
+                <Card className="bg-white border border-gray-200 shadow-xl">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-pink-500" />
@@ -201,7 +201,7 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
                           className="flex items-center gap-3"
                         >
                           <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                          <span className="text-foreground">{highlight}</span>
+                          <span className="text-gray-900">{highlight}</span>
                         </li>
                       ))}
                     </ul>
@@ -209,7 +209,7 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
                 </Card>
 
                 {/* 講師紹介 */}
-                <Card className="border border-border shadow-xl overflow-hidden">
+                <Card className="bg-white border border-gray-200 shadow-xl overflow-hidden">
                   {/* グラデーション上バー */}
                   <div
                     className="h-1.5"
@@ -227,15 +227,15 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
                   <CardContent>
                     <div className="flex items-center gap-6">
                       {/* アバター（アイコン代用） */}
-                      <div className="w-24 h-24 rounded-full border-4 border-primary/20 bg-muted flex items-center justify-center flex-shrink-0">
-                        <User className="w-12 h-12 text-muted-foreground" />
+                      <div className="w-24 h-24 rounded-full border-4 border-primary/20 bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <User className="w-12 h-12 text-gray-400" />
                       </div>
                       <div>
-                        <h3 className="text-2xl font-bold text-foreground">
+                        <h3 className="text-2xl font-bold text-gray-900">
                           {seminar.speaker}
                         </h3>
                         {seminar.speaker_title && (
-                          <p className="text-muted-foreground">
+                          <p className="text-gray-600">
                             {seminar.speaker_title}
                           </p>
                         )}
@@ -272,7 +272,7 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
 
               {/* 右サイドバー: 予約情報 */}
               <div className="space-y-6">
-                <Card className="border border-border shadow-xl">
+                <Card className="bg-white border border-gray-200 shadow-xl">
                   {/* グラデーション上バー */}
                   <div
                     className="h-1.5 rounded-t-lg"
@@ -285,8 +285,8 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
                     {/* 参加状況プログレス */}
                     <div className="mb-6">
                       <div className="flex justify-between text-sm mb-2">
-                        <span className="text-muted-foreground">参加状況</span>
-                        <span className="font-medium text-foreground">
+                        <span className="text-gray-600">参加状況</span>
+                        <span className="font-medium text-gray-900">
                           {seminar.current_bookings}/{seminar.capacity}人
                         </span>
                       </div>
@@ -303,7 +303,7 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
                           }}
                         />
                       </div>
-                      <p className="text-sm text-muted-foreground mt-2">
+                      <p className="text-sm text-gray-600 mt-2">
                         残り{" "}
                         <span className="font-bold text-primary">
                           {isFull ? 0 : spotsLeft}
@@ -315,22 +315,22 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
                     {/* 詳細情報 */}
                     <div className="space-y-3 mb-6">
                       {/* 開催日 */}
-                      <div className="flex items-center gap-3 p-3 bg-muted rounded-xl">
+                      <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-xl">
                         <Calendar className="w-5 h-5 text-primary flex-shrink-0" />
                         <div>
-                          <p className="text-xs text-muted-foreground">開催日</p>
-                          <p className="font-medium text-foreground text-sm">
+                          <p className="text-xs text-gray-500">開催日</p>
+                          <p className="font-medium text-gray-900 text-sm">
                             {format(date, "yyyy年M月d日 (E)", { locale: ja })}
                           </p>
                         </div>
                       </div>
 
                       {/* 時間 */}
-                      <div className="flex items-center gap-3 p-3 bg-muted rounded-xl">
+                      <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-xl">
                         <Clock className="w-5 h-5 text-pink-500 flex-shrink-0" />
                         <div>
-                          <p className="text-xs text-muted-foreground">時間</p>
-                          <p className="font-medium text-foreground text-sm">
+                          <p className="text-xs text-gray-500">時間</p>
+                          <p className="font-medium text-gray-900 text-sm">
                             {format(date, "HH:mm", { locale: ja })} ～{" "}
                             {formatDuration(seminar.duration_minutes)}
                           </p>
@@ -338,22 +338,22 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
                       </div>
 
                       {/* 開催形式 */}
-                      <div className="flex items-center gap-3 p-3 bg-muted rounded-xl">
+                      <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-xl">
                         <MapPin className="w-5 h-5 text-cyan-500 flex-shrink-0" />
                         <div>
-                          <p className="text-xs text-muted-foreground">開催形式</p>
-                          <p className="font-medium text-foreground text-sm">
+                          <p className="text-xs text-gray-500">開催形式</p>
+                          <p className="font-medium text-gray-900 text-sm">
                             {formatLabel(seminar.format)}
                           </p>
                         </div>
                       </div>
 
                       {/* 対象 */}
-                      <div className="flex items-center gap-3 p-3 bg-muted rounded-xl">
+                      <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-xl">
                         <Users className="w-5 h-5 text-orange-500 flex-shrink-0" />
                         <div>
-                          <p className="text-xs text-muted-foreground">対象</p>
-                          <p className="font-medium text-foreground text-sm">
+                          <p className="text-xs text-gray-500">対象</p>
+                          <p className="font-medium text-gray-900 text-sm">
                             {seminar.target === "members_only"
                               ? "会員限定"
                               : "一般公開"}
@@ -387,7 +387,7 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
                       </Button>
                     )}
 
-                    <p className="text-xs text-center text-muted-foreground mt-4">
+                    <p className="text-xs text-center text-gray-500 mt-4">
                       キャンセルポリシーが適用されます
                     </p>
                   </CardContent>
@@ -397,8 +397,8 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
           </div>
 
           {/* フッター */}
-          <footer className="bg-card border-t border-border py-8">
-            <div className="container mx-auto px-4 text-center text-muted-foreground">
+          <footer className="bg-white border-t border-gray-200 py-8">
+            <div className="container mx-auto px-4 text-center text-gray-500">
               <p>© 2026 Seminar Hub. All rights reserved.</p>
             </div>
           </footer>
