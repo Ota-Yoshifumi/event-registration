@@ -63,6 +63,9 @@ export async function updateRow(
   const token = await getAccessToken();
   const colLetter = String.fromCharCode(64 + values.length);
   const range = `${sheetName}!A${rowIndex}:${colLetter}${rowIndex}`;
+  console.log("[updateRow] Updating range:", range);
+  console.log("[updateRow] Values length:", values.length);
+  console.log("[updateRow] Column letter:", colLetter);
   const response = await fetch(
     `${SHEETS_API}/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
     {
