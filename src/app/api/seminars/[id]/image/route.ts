@@ -46,10 +46,17 @@ export async function POST(
 
     // マスタースプレッドシートの P列（インデックス15）に画像URL を更新
     const now = new Date().toISOString();
+    console.log("[Image Upload] Original row values length:", result.values.length);
+    console.log("[Image Upload] Original row data:", JSON.stringify(result.values));
+
     const updated = [...result.values];
     while (updated.length < 18) updated.push("");
     updated[15] = imageUrl;
     updated[17] = now;
+
+    console.log("[Image Upload] Updated row values length:", updated.length);
+    console.log("[Image Upload] P列 (index 15):", updated[15]);
+    console.log("[Image Upload] R列 (index 17):", updated[17]);
 
     console.log("[Image Upload] Updating spreadsheet row", result.rowIndex, "with image URL at index 15");
     await updateMasterRow(result.rowIndex, updated);
