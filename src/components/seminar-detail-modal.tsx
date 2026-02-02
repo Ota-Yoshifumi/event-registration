@@ -124,12 +124,12 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
             <X className="w-5 h-5" />
           </button>
 
-          {/* ヒーロー画像エリア */}
-          <div className="relative h-[40vh] md:h-[50vh]">
+          {/* ヒーロー画像エリア（16:9固定、白背景） */}
+          <div className="relative w-full aspect-[16/9] bg-white">
             <img
               src={resolveImageUrl(seminar.image_url)}
               alt={seminar.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "/9553.png";
               }}

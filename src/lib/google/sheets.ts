@@ -288,7 +288,7 @@ export async function createSeminarSpreadsheet(
 
 /**
  * ファイルを Google Drive にアップロードし、公開URLを返す。
- * GOOGLE_DRIVE_FOLDER_ID が設定されている場合はそのフォルダに配置する。
+ * GOOGLE_DRIVE_IMAGES_FOLDER_ID が設定されている場合はそのフォルダに配置する。
  */
 export async function uploadImageToDrive(
   fileName: string,
@@ -296,7 +296,7 @@ export async function uploadImageToDrive(
   mimeType: string
 ): Promise<string> {
   const token = await getAccessToken();
-  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  const folderId = process.env.GOOGLE_DRIVE_IMAGES_FOLDER_ID;
 
   // multipart/related でメタデータとファイル本体を同時に送信
   const boundary = `boundary_${Date.now()}`;
