@@ -6,7 +6,7 @@ export default function SeminarsLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="force-light min-h-screen bg-background">
       <Header />
       {children}
     </div>
