@@ -59,7 +59,7 @@ export default function AdminReservationsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold">予約一覧</h1>
+      <h1 className="mb-6 text-2xl font-bold text-foreground">予約一覧</h1>
 
       <div className="mb-4 max-w-sm">
         <Select value={selectedSeminar} onValueChange={setSelectedSeminar}>
@@ -89,7 +89,7 @@ export default function AdminReservationsPage() {
           <p className="mb-3 text-sm text-muted-foreground">
             {reservations.length}件の予約
           </p>
-          <Table>
+          <Table className="rounded-lg border border-border">
             <TableHeader>
               <TableRow>
                 <TableHead>氏名</TableHead>

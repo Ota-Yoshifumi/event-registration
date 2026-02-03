@@ -120,11 +120,11 @@ export default function EditSeminarPage({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-6 text-2xl font-bold">セミナー編集</h1>
+      <h1 className="mb-6 text-2xl font-bold text-foreground">セミナー編集</h1>
 
-      <Card>
+      <Card className="border border-border bg-card">
         <CardHeader>
-          <CardTitle>セミナー情報</CardTitle>
+          <CardTitle className="text-foreground">セミナー情報</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -151,7 +151,7 @@ export default function EditSeminarPage({
               {seminar.image_url && (
                 <div className="mt-4">
                   <Label className="text-sm text-muted-foreground">登録済み画像</Label>
-                  <div className="mt-2 rounded border overflow-hidden bg-white max-w-md">
+                  <div className="mt-2 rounded-lg border border-border overflow-hidden bg-card max-w-md">
                     <img
                       src={resolveImageUrl(seminar.image_url)}
                       alt={seminar.title}
@@ -269,13 +269,13 @@ export default function EditSeminarPage({
             </div>
 
             {(seminar.meet_url || seminar.calendar_event_id) && (
-              <div className="rounded bg-gray-50 p-3 space-y-3">
+              <div className="rounded-lg bg-muted p-3 space-y-3 border border-border">
                 {seminar.calendar_event_id && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1">
                       Calendar Event ID
                     </p>
-                    <p className="text-sm font-mono text-gray-700 break-all">
+                    <p className="text-sm font-mono text-foreground break-all">
                       {seminar.calendar_event_id}
                     </p>
                   </div>
@@ -289,7 +289,7 @@ export default function EditSeminarPage({
                       href={seminar.meet_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline break-all"
+                      className="text-sm text-primary hover:underline break-all"
                     >
                       {seminar.meet_url}
                     </a>

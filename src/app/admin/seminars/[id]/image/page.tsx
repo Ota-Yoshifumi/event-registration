@@ -110,18 +110,18 @@ export default function SeminarImagePage({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-6 text-2xl font-bold">セミナー画像登録</h1>
+      <h1 className="mb-6 text-2xl font-bold text-foreground">セミナー画像登録</h1>
 
-      <Card>
+      <Card className="border border-border bg-card">
         <CardHeader>
-          <CardTitle>{seminar.title}</CardTitle>
+          <CardTitle className="text-foreground">{seminar.title}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* 現在の画像（登録済みの場合） */}
           {seminar.image_url && !file && (
             <div className="space-y-2">
               <Label className="text-sm text-muted-foreground">現在の画像</Label>
-              <div className="rounded border overflow-hidden">
+              <div className="rounded-lg border border-border overflow-hidden bg-card">
                 <img
                   src={resolveImageUrl(seminar.image_url)}
                   alt={seminar.title}
@@ -138,7 +138,7 @@ export default function SeminarImagePage({
           {file && preview && (
             <div className="space-y-2">
               <Label className="text-sm text-muted-foreground">プレビュー</Label>
-              <div className="rounded border overflow-hidden">
+              <div className="rounded-lg border border-border overflow-hidden bg-card">
                 <img
                   src={preview}
                   alt="プレビュー"
@@ -158,7 +158,7 @@ export default function SeminarImagePage({
               type="file"
               accept="image/jpeg,image/png,image/gif,image/webp"
               onChange={handleFileChange}
-              className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
+              className="block w-full text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-muted file:text-foreground hover:file:bg-muted/80"
             />
           </div>
 
