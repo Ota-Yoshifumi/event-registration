@@ -28,51 +28,51 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold">ダッシュボード</h1>
+      <h1 className="mb-6 text-2xl font-bold text-foreground">ダッシュボード</h1>
 
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <Card>
+        <Card className="border border-border bg-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               セミナー総数
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{seminars.length}</p>
+            <p className="text-3xl font-bold text-foreground">{seminars.length}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border border-border bg-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               今後のセミナー
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{upcoming.length}</p>
+            <p className="text-3xl font-bold text-foreground">{upcoming.length}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border border-border bg-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               総予約数
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{totalBookings}</p>
+            <p className="text-3xl font-bold text-foreground">{totalBookings}</p>
           </CardContent>
         </Card>
       </div>
 
-      <h2 className="mb-4 text-lg font-semibold">直近のセミナー</h2>
+      <h2 className="mb-4 text-lg font-semibold text-foreground">直近のセミナー</h2>
       {upcoming.length === 0 ? (
         <p className="text-muted-foreground">今後のセミナーはありません。</p>
       ) : (
         <div className="space-y-3">
           {upcoming.slice(0, 5).map((s) => (
-            <Card key={s.id}>
+            <Card key={s.id} className="border border-border bg-card">
               <CardContent className="flex items-center justify-between py-4">
                 <div>
-                  <p className="font-medium">{s.title}</p>
+                  <p className="font-medium text-foreground">{s.title}</p>
                   <p className="text-sm text-muted-foreground">
                     {new Date(s.date).toLocaleDateString("ja-JP", {
                       year: "numeric",

@@ -41,10 +41,10 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-sm">
+    <div className="force-light flex min-h-screen items-center justify-center bg-background">
+      <Card className="w-full max-w-sm border-border shadow-lg">
         <CardHeader>
-          <CardTitle className="text-center">管理画面ログイン</CardTitle>
+          <CardTitle className="text-center text-foreground">管理画面ログイン</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
