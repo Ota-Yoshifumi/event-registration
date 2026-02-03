@@ -67,11 +67,11 @@ export default function NewSeminarPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-6 text-2xl font-bold">セミナー新規作成</h1>
+      <h1 className="mb-6 text-2xl font-bold text-foreground">セミナー新規作成</h1>
 
-      <Card>
+      <Card className="border border-border bg-card">
         <CardHeader>
-          <CardTitle>セミナー情報</CardTitle>
+          <CardTitle className="text-foreground">セミナー情報</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

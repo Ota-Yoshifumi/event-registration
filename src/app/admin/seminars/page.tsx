@@ -66,13 +66,13 @@ export default function AdminSeminarsPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">セミナー管理</h1>
+        <h1 className="text-2xl font-bold text-foreground">セミナー管理</h1>
         <Link href="/admin/seminars/new">
-          <Button>新規作成</Button>
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">新規作成</Button>
         </Link>
       </div>
 
-      <Table>
+      <Table className="rounded-lg border border-border">
         <TableHeader>
           <TableRow>
             <TableHead>タイトル</TableHead>

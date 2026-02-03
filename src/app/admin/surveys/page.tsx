@@ -69,7 +69,7 @@ export default function AdminSurveysPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold">アンケート結果</h1>
+      <h1 className="mb-6 text-2xl font-bold text-foreground">アンケート結果</h1>
 
       <div className="mb-4 max-w-sm">
         <Select value={selectedSeminar} onValueChange={setSelectedSeminar}>
@@ -106,12 +106,12 @@ export default function AdminSurveysPage() {
               <p className="mt-4 text-muted-foreground">回答がありません。</p>
             ) : (
               <>
-                <Card className="mb-4 mt-4">
+                <Card className="mb-4 mt-4 border border-border bg-card">
                   <CardHeader>
-                    <CardTitle className="text-sm">関心度 平均</CardTitle>
+                    <CardTitle className="text-sm text-muted-foreground">関心度 平均</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold">
+                    <p className="text-2xl font-bold text-foreground">
                       {(
                         preSurveys.reduce(
                           (sum, s) => sum + (parseInt(s.q1_interest_level) || 0),
@@ -123,7 +123,7 @@ export default function AdminSurveysPage() {
                   </CardContent>
                 </Card>
 
-                <Table>
+                <Table className="rounded-lg border border-border">
                   <TableHeader>
                     <TableRow>
                       <TableHead>関心度</TableHead>
@@ -163,12 +163,12 @@ export default function AdminSurveysPage() {
             ) : (
               <>
                 <div className="mb-4 mt-4 grid gap-4 sm:grid-cols-3">
-                  <Card>
+                  <Card className="border border-border bg-card">
                     <CardHeader>
-                      <CardTitle className="text-sm">満足度 平均</CardTitle>
+                      <CardTitle className="text-sm text-muted-foreground">満足度 平均</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-2xl font-bold">
+                      <p className="text-2xl font-bold text-foreground">
                         {(
                           postSurveys.reduce(
                             (sum, s) => sum + (parseInt(s.q1_satisfaction) || 0),
@@ -179,12 +179,12 @@ export default function AdminSurveysPage() {
                       </p>
                     </CardContent>
                   </Card>
-                  <Card>
+                  <Card className="border border-border bg-card">
                     <CardHeader>
-                      <CardTitle className="text-sm">内容の質 平均</CardTitle>
+                      <CardTitle className="text-sm text-muted-foreground">内容の質 平均</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-2xl font-bold">
+                      <p className="text-2xl font-bold text-foreground">
                         {(
                           postSurveys.reduce(
                             (sum, s) => sum + (parseInt(s.q2_content_quality) || 0),
@@ -195,12 +195,12 @@ export default function AdminSurveysPage() {
                       </p>
                     </CardContent>
                   </Card>
-                  <Card>
+                  <Card className="border border-border bg-card">
                     <CardHeader>
-                      <CardTitle className="text-sm">NPS 平均</CardTitle>
+                      <CardTitle className="text-sm text-muted-foreground">NPS 平均</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-2xl font-bold">
+                      <p className="text-2xl font-bold text-foreground">
                         {(
                           postSurveys.reduce(
                             (sum, s) => sum + (parseInt(s.q6_recommend) || 0),
@@ -213,7 +213,7 @@ export default function AdminSurveysPage() {
                   </Card>
                 </div>
 
-                <Table>
+                <Table className="rounded-lg border border-border">
                   <TableHeader>
                     <TableRow>
                       <TableHead>満足度</TableHead>
