@@ -47,18 +47,9 @@ function formatDuration(minutes: number): string {
   return `${h}時間${m}分`;
 }
 
-/** 開催形式のカラーマッピング */
-const formatColors: Record<string, string> = {
-  online: "bg-cyan-500 text-white",
-  venue: "bg-purple-600 text-white",
-  hybrid: "bg-pink-500 text-white",
-};
-
 export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
   const isFull = seminar.current_bookings >= seminar.capacity;
-  const isPast = new Date(seminar.date) < new Date();
   const spotsLeft = seminar.capacity - seminar.current_bookings;
-  const isAlmostFull = spotsLeft > 0 && spotsLeft < 20;
 
   const date = new Date(seminar.date);
 
@@ -81,52 +72,16 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
         className="cursor-pointer h-full"
       >
         <Card className="group overflow-hidden hover:shadow-2xl transition-all duration-300 border border-border bg-card flex flex-col h-full">
-          {/* 画像エリア（16:9固定、白背景） */}
+          {/* 画像エリア（16:9・オーバーレイなしで画像を明確に表示） */}
           <div className="relative w-full aspect-[16/9] overflow-hidden bg-white">
             <img
               src={resolveImageUrl(seminar.image_url)}
               alt={seminar.title}
-              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "/9553.png";
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-
-            {/* 開催形式バッジ */}
-            <Badge
-              className={`absolute top-4 left-4 ${formatColors[seminar.format] || "bg-purple-600 text-white"}`}
-            >
-              {seminar.format === "online"
-                ? "オンライン"
-                : seminar.format === "venue"
-                  ? "会場"
-                  : "ハイブリッド"}
-            </Badge>
-
-            {/* 残りわずかバッジ */}
-            {isAlmostFull && !isPast && (
-              <Badge className="absolute top-4 right-4 bg-destructive text-destructive-foreground animate-pulse">
-                残りわずか！
-              </Badge>
-            )}
-
-            {/* 満席・終了バッジ */}
-            {(isFull || isPast) && (
-              <Badge className="absolute top-4 right-4 bg-gray-600 text-white">
-                {isFull ? "満席" : "終了"}
-              </Badge>
-            )}
-
-            {/* 日付オーバーライ */}
-            <div className="absolute bottom-4 left-4 text-white">
-              <div className="text-2xl font-bold">
-                {format(date, "d", { locale: ja })}
-              </div>
-              <div className="text-sm opacity-90">
-                {format(date, "M月 (E)", { locale: ja })}
-              </div>
-            </div>
           </div>
 
           {/* コンテンツ */}
@@ -140,14 +95,14 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
             </p>
 
             <div className="space-y-2 mb-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm font-bold text-foreground">
                 <Clock className="w-4 h-4 text-primary" />
                 <span>
                   {format(date, "M月d日 (E) HH:mm", { locale: ja })} ・{" "}
                   {formatDuration(seminar.duration_minutes)}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm text-foreground">
                 <MapPin className="w-4 h-4 text-pink-500" />
                 <span className="truncate">
                   {seminar.format === "online"
@@ -157,12 +112,12 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
                       : "会場開催"}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm text-foreground">
                 <Users className="w-4 h-4 text-cyan-500" />
                 <span>
                   登壇者: {seminar.speaker}
                   {seminar.speaker_title && (
-                    <span className="text-muted-foreground">
+                    <span className="text-foreground">
                       （{seminar.speaker_title}）
                     </span>
                   )}
