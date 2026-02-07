@@ -182,6 +182,10 @@
   --ring: 262 83% 58%;
 }
 
+/* フロント セミナー一覧カード: 画像はオーバーレイ・グラデーションなしで表示。
+   カード本文の日付・開催形式・登壇者は text-foreground（黒）、日付は font-bold。
+   スタイルは components/seminar-card.tsx で適用。 */
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
