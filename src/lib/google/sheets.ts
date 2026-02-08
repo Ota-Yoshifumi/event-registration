@@ -368,6 +368,57 @@ export async function removeMemberDomain(domain: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// 予約番号インデックス（マスター内シート「予約番号インデックス」）
+// 予約番号 → spreadsheet_id, reservation_id の検索用
+// ---------------------------------------------------------------------------
+
+export const RESERVATION_INDEX_SHEET_NAME = "予約番号インデックス";
+const RESERVATION_INDEX_HEADER = ["予約番号", "spreadsheet_id", "reservation_id"];
+
+export async function ensureReservationIndexSheet(): Promise<void> {
+  const spreadsheetId = getMasterSpreadsheetId();
+  const titles = await getSpreadsheetSheetTitles(spreadsheetId);
+  if (titles.includes(RESERVATION_INDEX_SHEET_NAME)) return;
+  await addSheet(spreadsheetId, RESERVATION_INDEX_SHEET_NAME);
+  await setSheetValues(spreadsheetId, RESERVATION_INDEX_SHEET_NAME, [
+    RESERVATION_INDEX_HEADER,
+  ]);
+}
+
+export async function appendReservationIndex(
+  reservationNumber: string,
+  spreadsheetId: string,
+  reservationId: string
+): Promise<void> {
+  await ensureReservationIndexSheet();
+  await appendRow(getMasterSpreadsheetId(), RESERVATION_INDEX_SHEET_NAME, [
+    reservationNumber.trim().toLowerCase(),
+    spreadsheetId,
+    reservationId,
+  ]);
+}
+
+export async function findReservationByNumber(
+  reservationNumber: string
+): Promise<{ spreadsheet_id: string; reservation_id: string } | null> {
+  await ensureReservationIndexSheet();
+  const rows = await getSheetData(
+    getMasterSpreadsheetId(),
+    RESERVATION_INDEX_SHEET_NAME
+  );
+  const key = reservationNumber.trim().toLowerCase();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0]?.trim().toLowerCase() === key) {
+      return {
+        spreadsheet_id: rows[i][1] || "",
+        reservation_id: rows[i][2] || "",
+      };
+    }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // セミナー専用スプレッドシートの自動作成
 // ---------------------------------------------------------------------------
 
@@ -423,20 +474,20 @@ export async function createSeminarSpreadsheet(
         valueInputOption: "USER_ENTERED",
         data: [
           {
-            range: "イベント情報!A1:S1",
+            range: "イベント情報!A1:T1",
             values: [[
               "ID", "タイトル", "説明", "開催日時", "所要時間(分)",
               "定員", "現在の予約数", "登壇者", "Meet URL", "Calendar Event ID",
               "ステータス", "spreadsheet_id", "肩書き", "開催形式", "対象",
-              "画像URL", "作成日時", "更新日時", "参考URL",
+              "招待コード", "画像URL", "作成日時", "更新日時", "参考URL",
             ]],
           },
           {
-            range: "予約情報!A1:K1",
+            range: "予約情報!A1:L1",
             values: [[
               "ID", "氏名", "メールアドレス", "会社名", "部署",
               "電話番号", "ステータス", "事前アンケート回答済",
-              "事後アンケート回答済", "予約日時", "備考",
+              "事後アンケート回答済", "予約日時", "備考", "予約番号",
             ]],
           },
           {

@@ -7,6 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ArrowLeft, Calendar, Clock, MapPin, User } from "lucide-react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
@@ -30,6 +37,8 @@ export default function BookingPage({
     phone: "",
   });
   const [emailConfirm, setEmailConfirm] = useState("");
+  const [invitationCode, setInvitationCode] = useState("");
+  const [showMemberOnlyModal, setShowMemberOnlyModal] = useState(false);
 
   useEffect(() => {
     fetch(`/api/seminars/${id}`)
@@ -89,8 +98,14 @@ export default function BookingPage({
           seminar_id: id,
           ...formData,
           email: formData.email.trim(),
+          invitation_code: invitationCode.trim() || undefined,
         }),
       });
+
+      if (res.status === 403) {
+        setShowMemberOnlyModal(true);
+        return;
+      }
 
       if (!res.ok) {
         const error = await res.json();
@@ -99,10 +114,11 @@ export default function BookingPage({
 
       const booking = await res.json();
 
-      toast.success("予約が完了しました！");
+      toast.success(booking.already_registered ? "登録済みです。確認メールを再送しました。" : "予約が完了しました！");
 
-      // 確認ページにリダイレクト
-      router.push(`/seminars/${id}/confirmation?booking_id=${booking.id}`);
+      const params = new URLSearchParams({ booking_id: booking.id });
+      if (booking.reservation_number) params.set("reservation_number", booking.reservation_number);
+      router.push(`/seminars/${id}/confirmation?${params.toString()}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "予約に失敗しました");
     } finally {
@@ -301,6 +317,25 @@ export default function BookingPage({
               />
             </div>
 
+            {/* 招待コード（会員限定セミナーのみ） */}
+            {seminar.target === "members_only" && (
+              <div className="space-y-2">
+                <Label htmlFor="invitation_code">招待コード</Label>
+                <p className="text-xs text-muted-foreground">
+                  会員でない場合は、お手元の招待コードを入力してください。
+                </p>
+                <input
+                  id="invitation_code"
+                  name="invitation_code"
+                  type="text"
+                  value={invitationCode}
+                  onChange={(e) => setInvitationCode(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  autoComplete="off"
+                />
+              </div>
+            )}
+
             {/* 注意事項 */}
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
               <p className="text-sm text-muted-foreground">
@@ -333,6 +368,28 @@ export default function BookingPage({
           </form>
         </CardContent>
       </Card>
+
+      {/* 会員限定アラートモーダル（403時） */}
+      <Dialog open={showMemberOnlyModal} onOpenChange={setShowMemberOnlyModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>このセミナーは会員限定のものとなります</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            会員企業のメールアドレスでお申し込みいただくか、招待コードをお持ちの場合は入力のうえお申し込みください。
+          </p>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setShowMemberOnlyModal(false);
+                router.push("/seminars");
+              }}
+            >
+              セミナー一覧へ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -83,6 +83,7 @@ export default function EditSeminarPage({
   const [status, setStatus] = useState("draft");
   const [format, setFormat] = useState<"venue" | "online" | "hybrid">("online");
   const [target, setTarget] = useState<"members_only" | "public">("public");
+  const [invitationCode, setInvitationCode] = useState("");
   const [surveyPre, setSurveyPre] = useState<{ status: "loading" | "set" | "empty" | "none" | "error"; count?: number }>({ status: "loading" });
   const [surveyPost, setSurveyPost] = useState<{ status: "loading" | "set" | "empty" | "none" | "error"; count?: number }>({ status: "loading" });
 
@@ -94,6 +95,7 @@ export default function EditSeminarPage({
         setStatus(data.status || "draft");
         setFormat(data.format || "online");
         setTarget(data.target || "public");
+        setInvitationCode(data.invitation_code || "");
       });
   }, [id]);
 
@@ -145,6 +147,7 @@ export default function EditSeminarPage({
       format,
       target,
       status,
+      invitation_code: invitationCode.trim() || "",
     };
 
     try {
@@ -338,6 +341,20 @@ export default function EditSeminarPage({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="invitation_code">招待コード</Label>
+              <p className="text-xs text-muted-foreground">
+                会員限定セミナーで、非会員が申し込む際に使用するコード（例: whgc2026）。空欄の場合は招待なし。
+              </p>
+              <Input
+                id="invitation_code"
+                value={invitationCode}
+                onChange={(e) => setInvitationCode(e.target.value)}
+                placeholder="例: whgc2026"
+                className="font-mono"
+              />
             </div>
 
             {(seminar.meet_url || seminar.calendar_event_id) && (

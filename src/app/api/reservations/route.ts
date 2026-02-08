@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSheetData } from "@/lib/google/sheets";
 import type { Reservation } from "@/lib/types";
 
-// セミナー専用スプレッドシート「予約情報」シートの列順:
-// A:ID B:氏名 C:メールアドレス D:会社名 E:部署
-// F:電話番号 G:ステータス H:事前アンケート回答済 I:事後アンケート回答済
-// J:予約日時 K:備考
+// 予約情報シート列順: ... K:備考 L:予約番号（12列目、既存は11列のままもあり得る）
 
 function rowToReservation(row: string[]): Reservation {
   return {
@@ -20,6 +17,7 @@ function rowToReservation(row: string[]): Reservation {
     post_survey_completed: row[8] === "TRUE",
     created_at: row[9] || "",
     note: row[10] || "",
+    reservation_number: row[11] || undefined,
   };
 }
 

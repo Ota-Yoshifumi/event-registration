@@ -22,6 +22,7 @@ export default function NewSeminarPage() {
   const [status, setStatus] = useState("draft");
   const [format, setFormat] = useState<"venue" | "online" | "hybrid">("online");
   const [target, setTarget] = useState<"members_only" | "public">("public");
+  const [invitationCode, setInvitationCode] = useState("");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -43,6 +44,7 @@ export default function NewSeminarPage() {
       format,
       target,
       status,
+      invitation_code: invitationCode.trim() || "",
     };
 
     try {
@@ -186,6 +188,20 @@ export default function NewSeminarPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="invitation_code">招待コード</Label>
+              <p className="text-xs text-muted-foreground">
+                会員限定セミナーで、非会員が申し込む際に使用するコード（例: whgc2026）。空欄の場合は招待なし。
+              </p>
+              <Input
+                id="invitation_code"
+                value={invitationCode}
+                onChange={(e) => setInvitationCode(e.target.value)}
+                placeholder="例: whgc2026"
+                className="font-mono"
+              />
             </div>
 
             <div className="space-y-2">
