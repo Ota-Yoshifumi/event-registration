@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { normalizeLineBreaks } from "@/lib/utils";
 import type { Seminar } from "@/lib/types";
 
 // Google Drive URLを画像表示用URLに変換
@@ -114,7 +115,7 @@ export default function SeminarImagePage({
 
       <Card className="border border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-foreground">{seminar.title}</CardTitle>
+          <CardTitle className="whitespace-pre-line text-foreground">{normalizeLineBreaks(seminar.title)}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* 現在の画像（登録済みの場合） */}

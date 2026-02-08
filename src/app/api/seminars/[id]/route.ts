@@ -57,6 +57,7 @@ export async function PUT(
       current.image_url,
       current.created_at,
       now,
+      body.speaker_reference_url ?? current.speaker_reference_url ?? "",
     ];
 
     // Calendar イベント更新
@@ -114,7 +115,7 @@ export async function DELETE(
 
     // 論理削除: status を cancelled に変更
     const updated = [...result.values];
-    while (updated.length < 18) updated.push("");
+    while (updated.length < 19) updated.push("");
     updated[10] = "cancelled";
     updated[17] = now;
 
@@ -127,7 +128,7 @@ export async function DELETE(
         const individualResult = await findRowById(current.spreadsheet_id, "イベント情報", id);
         if (individualResult) {
           const updatedIndividual = [...individualResult.values];
-          while (updatedIndividual.length < 18) updatedIndividual.push("");
+          while (updatedIndividual.length < 19) updatedIndividual.push("");
           updatedIndividual[10] = "cancelled";
           updatedIndividual[17] = now;
           await updateRow(current.spreadsheet_id, "イベント情報", individualResult.rowIndex, updatedIndividual);

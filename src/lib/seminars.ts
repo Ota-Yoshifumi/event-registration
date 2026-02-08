@@ -4,7 +4,7 @@ import type { Seminar } from "@/lib/types";
 // マスタースプレッドシート「セミナー一覧」シートの列順:
 // A:id B:title C:description D:date E:duration_minutes F:capacity
 // G:current_bookings H:speaker I:meet_url J:calendar_event_id
-// K:status L:spreadsheet_id M:肩書き N:開催形式 O:対象 P:画像URL Q:created_at R:updated_at
+// K:status L:spreadsheet_id M:肩書き N:開催形式 O:対象 P:画像URL Q:created_at R:updated_at S:参考URL
 
 /**
  * シートの1行を Seminar オブジェクトに変換する。
@@ -29,6 +29,7 @@ export function rowToSeminar(row: string[]): Seminar {
     status: (row[10] as Seminar["status"]) || "draft",
     spreadsheet_id: row[11] || "",
     speaker_title: isNewLayout ? row[12] || "" : "",
+    speaker_reference_url: isNewLayout ? row[18] || "" : "",
     format: (isNewLayout ? row[13] : "online") as Seminar["format"],
     target: (isNewLayout ? row[14] : "public") as Seminar["target"],
     image_url: isNewLayout ? row[15] || "" : "",

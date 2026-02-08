@@ -3,20 +3,11 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
-  User,
-  X,
-  Ticket,
-  CheckCircle,
-} from "lucide-react";
+import { Calendar, Clock, X, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Seminar } from "@/lib/types";
+import { normalizeLineBreaks } from "@/lib/utils";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 
@@ -70,14 +61,6 @@ const formatColors: Record<string, string> = {
   hybrid: "bg-pink-500 text-white",
 };
 
-const highlights = [
-  "業界トップクラスの講師による直接指導",
-  "実践的なワークショップ形式",
-  "参加者同士のネットワーキング機会",
-  "質疑応答セッションあり",
-  "参加証明書の発行",
-];
-
 export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps) {
   const [isClosing, setIsClosing] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -98,8 +81,6 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
 
   const isFull = seminar.current_bookings >= seminar.capacity;
   const isPast = new Date(seminar.date) < new Date();
-  const spotsLeft = seminar.capacity - seminar.current_bookings;
-  const progressPercent = (seminar.current_bookings / seminar.capacity) * 100;
   const date = new Date(seminar.date);
 
   const modalContent = (
@@ -124,7 +105,8 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
         transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
         className="fixed inset-0 z-[101] flex justify-center overflow-y-auto"
       >
-        <div className="w-full lg:w-[70%] min-h-full bg-white text-gray-900 relative">
+        {/* モーダル本体：背景黒。ヒーロー下のマージン間はこの黒が表示される */}
+        <div className="w-full lg:w-[70%] min-h-full bg-black relative">
           {/* 閉じるボタン */}
           <button
             onClick={handleClose}
@@ -134,198 +116,104 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
             <X className="w-5 h-5" />
           </button>
 
-          {/* ヒーロー画像エリア（16:9固定、白背景） */}
-          <div className="relative w-full aspect-[16/9] bg-white">
-            <img
-              src={resolveImageUrl(seminar.image_url)}
-              alt={seminar.title}
-              className="w-full h-full object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "/9553.png";
-              }}
-            />
-            {/* グラデーション遮光 */}
-            <div className="absolute inset-0 bg-gradient-to-t from-white via-white/50 to-transparent" />
-
-            {/* タイトルオーバーライ */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12">
-              <div className="container mx-auto">
-                {/* 開催形式バッジ */}
+          {/* ヒーロー：メイン画像 ＋ メインタイトル。その下に margin-bottom で次のセクションとの間隔 */}
+          <header
+            className="flex flex-shrink-0 flex-col mb-12 lg:mb-8"
+            aria-label="ヒーロー"
+          >
+            <div className="relative w-full overflow-hidden bg-neutral-800 aspect-[16/9]">
+              <img
+                src={resolveImageUrl(seminar.image_url)}
+                alt={seminar.title}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/9553.png";
+                }}
+              />
+            </div>
+            <div className="w-full max-w-[1280px] mx-auto bg-white px-8 lg:px-12 pt-6 pb-4">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <h2 className="text-2xl font-bold leading-tight tracking-tight text-gray-900 min-w-0 flex-1 whitespace-pre-line md:text-4xl">
+                  {normalizeLineBreaks(seminar.title)}
+                </h2>
                 <Badge
-                  className={`mb-4 ${formatColors[seminar.format] || "bg-purple-600 text-white"}`}
+                  className={`flex-shrink-0 ${formatColors[seminar.format] ?? "bg-purple-600 text-white"}`}
                 >
                   {formatLabel(seminar.format)}
                 </Badge>
-                {/* タイトル */}
-                <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">
-                  {seminar.title}
-                </h2>
-                {/* 対象バッジ */}
-                <div className="flex flex-wrap gap-2">
-                  {seminar.target === "members_only" && (
-                    <Badge variant="secondary">会員限定</Badge>
-                  )}
-                  {(isFull || isPast) && (
-                    <Badge variant="destructive">
-                      {isFull ? "満席" : "終了済み"}
-                    </Badge>
-                  )}
+              </div>
+              {(isFull || isPast) && (
+                <div className="pt-2">
+                  <Badge variant="destructive">
+                    {isFull ? "満席" : "終了済み"}
+                  </Badge>
                 </div>
-              </div>
+              )}
             </div>
-          </div>
+          </header>
 
-          {/* メインコンテンツ */}
-          <div className="container mx-auto px-4 py-12">
-            <div className="grid lg:grid-cols-3 gap-8">
-              {/* 左カラム: 概要・特徴・講師 */}
-              <div className="lg:col-span-2 space-y-8">
-                {/* セミナー概要 */}
-                <Card className="bg-white border border-gray-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-primary" />
-                      セミナー概要
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600 leading-relaxed text-lg">
-                      {seminar.description}
+          {/* セミナー詳細セクション：背景白。タイトルと同じ左余白（px-8 lg:px-12）で開始位置を揃える */}
+          <section
+            className="section-stack flex-shrink-0 bg-white pt-6 pb-8 lg:pt-8 lg:pb-10"
+            aria-label="詳細"
+          >
+            <div className="w-full max-w-[1280px] mx-auto px-8 lg:px-12">
+              <div className="grid lg:grid-cols-3 gap-8">
+                {/* 左カラム: 1.概要 2.講師 3.定員・会員限定ボタン */}
+                <div className="lg:col-span-2 section-stack">
+                  {/* 1. セミナー概要（テキストのみ） */}
+                  <div>
+                    <p className="whitespace-pre-line text-gray-600 leading-relaxed text-lg">
+                      {normalizeLineBreaks(seminar.description)}
                     </p>
-                  </CardContent>
-                </Card>
+                  </div>
 
-                {/* このセミナーの特徴 */}
-                <Card className="bg-white border border-gray-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-pink-500" />
-                      このセミナーの特徴
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-3">
-                      {highlights.map((highlight, index) => (
-                        <li
-                          key={index}
-                          className="flex items-center gap-3"
-                        >
-                          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                          <span className="text-gray-900">{highlight}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
+                  {/* 2. 講師（名前／肩書き、参考URL、写真アイコンなし） */}
+                  <div className="block-stack">
+                    <div className="text-2xl text-gray-900">
+                      講師： <span className="font-bold">{seminar.speaker}</span>
+                    </div>
+                    {seminar.speaker_title && (
+                      <p className="text-gray-600">{seminar.speaker_title}</p>
+                    )}
+                    {seminar.speaker_reference_url && (
+                      <a
+                        href={seminar.speaker_reference_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline break-all text-sm"
+                      >
+                        参考URL
+                      </a>
+                    )}
+                  </div>
 
-                {/* 講師紹介 */}
-                <Card className="bg-white border border-gray-200 shadow-xl overflow-hidden">
-                  {/* グラデーション上バー */}
-                  <div
-                    className="h-1.5"
-                    style={{
-                      background:
-                        "linear-gradient(to right, hsl(262, 83%, 58%), hsl(330, 81%, 60%), hsl(36, 100%, 50%))",
-                    }}
-                  />
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-cyan-500" />
-                      講師紹介
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-6">
-                      {/* アバター（アイコン代用） */}
-                      <div className="w-24 h-24 rounded-full border-4 border-primary/20 bg-gray-100 flex items-center justify-center flex-shrink-0">
-                        <User className="w-12 h-12 text-gray-400" />
-                      </div>
+                  {/* 3. 定員・会員限定をボタン（Badge）で表示 */}
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary" className="text-sm">
+                      定員 {seminar.capacity}名
+                    </Badge>
+                    <Badge
+                      variant={seminar.target === "members_only" ? "default" : "secondary"}
+                      className="text-sm"
+                    >
+                      {seminar.target === "members_only" ? "会員限定" : "一般公開"}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* 右カラム: セミナー情報（タイトル・開催日時・開催形式・申し込みボタン） */}
+                <div className="block-stack">
+                  <div className="seminar-detail-card overflow-hidden border border-gray-200 bg-white p-6 block-stack">
+                    <h3 className="text-lg font-semibold text-gray-900">セミナー情報</h3>
+                    <div className="block-stack-tight">
                       <div>
-                        <h3 className="text-2xl font-bold text-gray-900">
-                          {seminar.speaker}
-                        </h3>
-                        {seminar.speaker_title && (
-                          <p className="text-gray-600">
-                            {seminar.speaker_title}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Meet リンク（オンライン・ハイブリッド） */}
-                {seminar.meet_url &&
-                  (seminar.format === "online" || seminar.format === "hybrid") && (
-                    <Card className="border border-blue-200 shadow-xl bg-blue-50">
-                      <CardContent className="p-6">
-                        <p className="mb-2 text-sm font-semibold text-blue-800">
-                          参加方法
+                        <p className="text-xs text-gray-500">タイトル</p>
+                        <p className="font-medium text-gray-900 whitespace-pre-line">
+                          {normalizeLineBreaks(seminar.title)}
                         </p>
-                        <p className="mb-3 text-xs text-blue-600">
-                          {seminar.format === "online"
-                            ? "オンライン開催です。以下のリンクから参加できます。"
-                            : "ハイブリッド開催です。オンライン参加の場合は以下のリンクを使用してください。"}
-                        </p>
-                        <a
-                          href={seminar.meet_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-700 hover:underline break-all"
-                        >
-                          {seminar.meet_url}
-                        </a>
-                      </CardContent>
-                    </Card>
-                  )}
-              </div>
-
-              {/* 右サイドバー: 予約情報 */}
-              <div className="space-y-6">
-                <Card className="bg-white border border-gray-200 shadow-xl">
-                  {/* グラデーション上バー */}
-                  <div
-                    className="h-1.5 rounded-t-lg"
-                    style={{
-                      background:
-                        "linear-gradient(to right, hsl(262, 83%, 58%), hsl(330, 81%, 60%))",
-                    }}
-                  />
-                  <CardContent className="p-6">
-                    {/* 参加状況プログレス */}
-                    <div className="mb-6">
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-600">参加状況</span>
-                        <span className="font-medium text-gray-900">
-                          {seminar.current_bookings}/{seminar.capacity}人
-                        </span>
                       </div>
-                      {/* プログレスバー */}
-                      <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${Math.min(progressPercent, 100)}%`,
-                            background:
-                              progressPercent >= 90
-                                ? "hsl(0, 84%, 60%)"
-                                : "linear-gradient(to right, hsl(262, 83%, 58%), hsl(330, 81%, 60%))",
-                          }}
-                        />
-                      </div>
-                      <p className="text-sm text-gray-600 mt-2">
-                        残り{" "}
-                        <span className="font-bold text-primary">
-                          {isFull ? 0 : spotsLeft}
-                        </span>{" "}
-                        席
-                      </p>
-                    </div>
-
-                    {/* 詳細情報 */}
-                    <div className="space-y-3 mb-6">
-                      {/* 開催日 */}
-                      <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-xl">
+                      <div className="flex items-center gap-3 rounded-xl bg-gray-100 p-3">
                         <Calendar className="w-5 h-5 text-primary flex-shrink-0" />
                         <div>
                           <p className="text-xs text-gray-500">開催日</p>
@@ -334,9 +222,7 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
                           </p>
                         </div>
                       </div>
-
-                      {/* 時間 */}
-                      <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-xl">
+                      <div className="flex items-center gap-3 rounded-xl bg-gray-100 p-3">
                         <Clock className="w-5 h-5 text-pink-500 flex-shrink-0" />
                         <div>
                           <p className="text-xs text-gray-500">時間</p>
@@ -346,35 +232,16 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
                           </p>
                         </div>
                       </div>
-
-                      {/* 開催形式 */}
-                      <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-xl">
-                        <MapPin className="w-5 h-5 text-cyan-500 flex-shrink-0" />
-                        <div>
-                          <p className="text-xs text-gray-500">開催形式</p>
-                          <p className="font-medium text-gray-900 text-sm">
-                            {formatLabel(seminar.format)}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* 対象 */}
-                      <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-xl">
-                        <Users className="w-5 h-5 text-orange-500 flex-shrink-0" />
-                        <div>
-                          <p className="text-xs text-gray-500">対象</p>
-                          <p className="font-medium text-gray-900 text-sm">
-                            {seminar.target === "members_only"
-                              ? "会員限定"
-                              : "一般公開"}
-                          </p>
-                        </div>
+                      <div>
+                        <p className="text-xs text-gray-500">開催形式</p>
+                        <p className="font-medium text-gray-900 text-sm">
+                          {formatLabel(seminar.format)}
+                        </p>
                       </div>
                     </div>
 
-                    {/* 予約ボタン */}
                     {!isFull && !isPast ? (
-                      <a href={`/seminars/${seminar.id}/booking`}>
+                      <a href={`/seminars/${seminar.id}/booking`} className="block">
                         <Button
                           size="lg"
                           className="w-full text-white rounded-xl h-14 text-lg font-semibold"
@@ -397,18 +264,18 @@ export function SeminarDetailModal({ seminar, onClose }: SeminarDetailModalProps
                       </Button>
                     )}
 
-                    <p className="text-xs text-center text-gray-500 mt-4">
+                    <p className="text-xs text-center text-gray-500">
                       キャンセルポリシーが適用されます
                     </p>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+            </section>
 
           {/* フッター */}
           <footer className="bg-white border-t border-gray-200 py-8">
-            <div className="container mx-auto px-4 text-center text-gray-500">
+            <div className="content-container text-center text-gray-500">
               <p>© 2026 Seminar Hub. All rights reserved.</p>
             </div>
           </footer>

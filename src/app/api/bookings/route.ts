@@ -4,7 +4,7 @@ import { findMasterRowById, appendRow, updateCell, findRowById, updateRow } from
 import { sendReservationConfirmation, sendCancellationNotification } from "@/lib/email/resend";
 import type { Seminar } from "@/lib/types";
 
-// マスタースプレッドシート列順: A~R (新レイアウトは18列、P:画像URL)
+// マスタースプレッドシート列順: A~S (新レイアウトは19列、S:参考URL)
 function rowToSeminar(row: string[]): Seminar {
   const isNewLayout = row.length >= 18;
   return {
@@ -21,6 +21,7 @@ function rowToSeminar(row: string[]): Seminar {
     status: (row[10] as Seminar["status"]) || "draft",
     spreadsheet_id: row[11] || "",
     speaker_title: isNewLayout ? row[12] || "" : "",
+    speaker_reference_url: isNewLayout ? row[18] || "" : "",
     format: (isNewLayout ? row[13] : "online") as Seminar["format"],
     target: (isNewLayout ? row[14] : "public") as Seminar["target"],
     image_url: isNewLayout ? row[15] || "" : "",

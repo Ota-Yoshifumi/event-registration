@@ -17,6 +17,8 @@ export interface Seminar {
   speaker: string;
   /** 肩書き */
   speaker_title: string;
+  /** 講師参考URL */
+  speaker_reference_url: string;
   /** 開催形式: 会場 / オンライン / ハイブリッド */
   format: SeminarFormat;
   /** 対象: 会員限定 / 一般公開 */

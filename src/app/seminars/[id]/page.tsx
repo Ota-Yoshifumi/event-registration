@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnimatedSection } from "@/components/animated-section";
 import { getSeminarById } from "@/lib/seminars";
+import { normalizeLineBreaks } from "@/lib/utils";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 
@@ -84,73 +85,61 @@ export default async function SeminarDetailPage({
 
   return (
     <div className="min-h-screen bg-background">
-      {/* ヒーロー画像エリア */}
-      <div className="relative h-[50vh] md:h-[60vh]">
+      {/* ヒーロー画像エリア（オーバーレイなしで画像を明確に表示） */}
+      <div className="seminar-detail-hero relative w-full overflow-hidden bg-background">
         <img
           src={resolveImageUrl(seminar.image_url)}
           alt={seminar.title}
-          className="w-full h-full object-cover"
+          className="h-full w-full object-cover"
           onError={(e) => {
             (e.target as HTMLImageElement).src = "/9553.png";
           }}
         />
-        {/* グラデーション遮光 */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-
-        {/* 戻りボタン */}
+        {/* 戻りボタンのみ画像上に表示 */}
         <Link
           href="/seminars"
-          className="absolute top-6 left-6 z-10 inline-flex items-center"
+          className="absolute left-6 top-6 z-10 inline-flex items-center"
         >
           <Button
             variant="secondary"
             size="sm"
             className="rounded-full shadow-lg"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="mr-2 w-4 h-4" />
             戻る
           </Button>
         </Link>
-
-        {/* タイトルオーバーライ */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12">
-          <div className="container mx-auto">
-            {/* 開催形式バッジ */}
-            <Badge
-              className={`mb-4 ${formatColors[seminar.format] || "bg-purple-600 text-white"}`}
-            >
-              {formatLabel(seminar.format)}
-            </Badge>
-            {/* タイトル */}
-            <AnimatedSection
-              as="h1"
-              className="text-3xl md:text-5xl font-bold text-foreground mb-4"
-            >
-              {seminar.title}
-            </AnimatedSection>
-            {/* 対象バッジ */}
-            <div className="flex flex-wrap gap-2">
-              {seminar.target === "members_only" && (
-                <Badge variant="secondary">会員限定</Badge>
-              )}
-              {(isFull || isPast) && (
-                <Badge variant="destructive">
-                  {isFull ? "満席" : "終了済み"}
-                </Badge>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* メインコンテンツ */}
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid lg:grid-cols-3 gap-8">
+      {/* タイトルブロック（画像の下に配置） */}
+      <div className="seminar-detail-content section-stack">
+        <div>
+          <Badge
+            className={`mb-4 ${formatColors[seminar.format] ?? "bg-purple-600 text-white"}`}
+          >
+            {formatLabel(seminar.format)}
+          </Badge>
+          <h1 className="mb-4 whitespace-pre-line text-3xl font-bold tracking-tight text-foreground md:text-5xl">
+            {normalizeLineBreaks(seminar.title)}
+          </h1>
+          <div className="flex flex-wrap gap-2">
+            {seminar.target === "members_only" && (
+              <Badge variant="secondary">会員限定</Badge>
+            )}
+            {(isFull || isPast) && (
+              <Badge variant="destructive">
+                {isFull ? "満席" : "終了済み"}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-3">
           {/* 左カラム: 概要・特徴・講師 */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 section-stack">
             {/* セミナー概要 */}
             <AnimatedSection transition={{ delay: 0.1 }}>
-              <Card className="border border-border bg-card shadow-sm rounded-xl">
+              <Card className="seminar-detail-card">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-foreground">
                     <span className="w-2 h-2 rounded-full bg-primary" />
@@ -158,8 +147,8 @@ export default async function SeminarDetailPage({
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground leading-relaxed text-lg">
-                    {seminar.description}
+                  <p className="whitespace-pre-line text-muted-foreground leading-relaxed text-lg">
+                    {normalizeLineBreaks(seminar.description)}
                   </p>
                 </CardContent>
               </Card>
@@ -167,7 +156,7 @@ export default async function SeminarDetailPage({
 
             {/* このセミナーの特徴 */}
             <AnimatedSection transition={{ delay: 0.2 }}>
-              <Card className="border border-border bg-card shadow-sm rounded-xl">
+              <Card className="seminar-detail-card">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-foreground">
                     <span className="w-2 h-2 rounded-full bg-accent" />
@@ -196,7 +185,7 @@ export default async function SeminarDetailPage({
 
             {/* 講師紹介 */}
             <AnimatedSection transition={{ delay: 0.3 }}>
-              <Card className="border border-border bg-card shadow-sm rounded-xl overflow-hidden">
+              <Card className="seminar-detail-card overflow-hidden">
                 <div className="h-1.5 bg-primary" />
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-foreground">
@@ -210,11 +199,11 @@ export default async function SeminarDetailPage({
                       <User className="w-12 h-12 text-muted-foreground" />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-foreground">
-                        {seminar.speaker}
-                      </h3>
+                      <div className="text-2xl text-foreground">
+                        登壇者： <span className="font-bold">{seminar.speaker}</span> 氏
+                      </div>
                       {seminar.speaker_title && (
-                        <p className="text-muted-foreground">
+                        <p className="mt-1 text-muted-foreground">
                           {seminar.speaker_title}
                         </p>
                       )}
@@ -228,7 +217,7 @@ export default async function SeminarDetailPage({
             {seminar.meet_url &&
               (seminar.format === "online" || seminar.format === "hybrid") && (
                 <AnimatedSection transition={{ delay: 0.35 }}>
-                  <Card className="border border-border bg-muted/50 rounded-xl">
+                  <Card className="seminar-detail-card bg-muted/50">
                     <CardContent className="p-6">
                       <p className="mb-2 text-sm font-semibold text-foreground">
                         参加方法
@@ -253,13 +242,13 @@ export default async function SeminarDetailPage({
           </div>
 
           {/* 右サイドバー: 予約情報 */}
-          <div className="space-y-6">
+          <div className="block-stack">
             <AnimatedSection transition={{ delay: 0.2 }}>
-              <Card className="border border-border bg-card shadow-sm rounded-xl sticky top-6">
+              <Card className="seminar-detail-card sticky top-6">
                 <div className="h-1.5 rounded-t-xl bg-primary" />
-                <CardContent className="p-6">
+                <CardContent className="p-6 block-stack">
                   {/* 参加状況プログレス */}
-                  <div className="mb-6">
+                  <div>
                     <div className="flex justify-between text-sm mb-2">
                       <span className="text-muted-foreground">参加状況</span>
                       <span className="font-medium text-foreground">
@@ -285,7 +274,7 @@ export default async function SeminarDetailPage({
                   </div>
 
                   {/* 詳細情報 */}
-                  <div className="space-y-3 mb-6">
+                  <div className="block-stack-tight">
                     {/* 開催日 */}
                     <div className="flex items-center gap-3 p-3 bg-muted rounded-xl">
                       <Calendar className="w-5 h-5 text-primary flex-shrink-0" />
@@ -367,7 +356,7 @@ export default async function SeminarDetailPage({
 
       {/* フッター */}
       <footer className="bg-card border-t border-border py-8 mt-12">
-        <div className="container mx-auto px-4 text-center text-muted-foreground">
+        <div className="content-container text-center text-muted-foreground">
           <p>© 2026 Seminar Hub. All rights reserved.</p>
         </div>
       </footer>
