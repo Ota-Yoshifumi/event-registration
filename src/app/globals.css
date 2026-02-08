@@ -306,14 +306,7 @@
    ヒーローエリア・メインコンテンツ・カードの見た目をここで一元管理。
    変数は :root に定義（--seminar-detail-hero-*）。 */
 
-.seminar-detail-hero {
-  height: var(--seminar-detail-hero-height-mobile);
-}
-@media (min-width: 1024px) {
-  .seminar-detail-hero {
-    height: var(--seminar-detail-hero-height-desktop);
-  }
-}
+/* ヒーローは 16:9・画像は天地合わせ左右白（コンポーネントで aspect-[16/9] + object-contain） */
 
 /* 詳細ページのメインコンテンツ。中身は .content-container + .section-stack の組み合わせで構成可能。 */
 .seminar-detail-content {

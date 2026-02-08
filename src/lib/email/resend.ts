@@ -105,7 +105,7 @@ export async function sendReservationConfirmation(
     ` : ""}
 
     <p style="margin: 20px 0 10px 0; font-size: 14px;">以下の予約番号と、下記の変更・キャンセルリンクから、内容の変更やキャンセルができます。</p>
-    <p style="margin: 0 0 15px 0; font-size: 14px; color: #6b7280;">予約番号: <strong>${displayNumber}</strong>（変更・キャンセル画面でコピー＆ペーストしてご入力ください）</p>
+    <p style="margin: 0 0 15px 0; font-size: 14px; color: #6b7280;">予約番号: <strong>${displayNumber}</strong>（上記の予約番号をご入力ください）</p>
     <a href="${manageUrl}"
        style="display: inline-block; background-color: #6b7280; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; margin-bottom: 20px;">
       変更・キャンセル

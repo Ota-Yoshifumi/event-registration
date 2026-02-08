@@ -81,12 +81,12 @@ export default async function SeminarDetailPage({
 
   return (
     <div className="min-h-screen bg-background">
-      {/* ヒーロー画像エリア（オーバーレイなしで画像を明確に表示） */}
-      <div className="seminar-detail-hero relative w-full overflow-hidden bg-background">
+      {/* ヒーロー画像エリア（16:9。画像は天地に合わせて表示、左右余白は白・一覧と同じ） */}
+      <div className="seminar-detail-hero relative flex w-full items-center justify-center overflow-hidden bg-white aspect-[16/9]">
         <img
           src={resolveImageUrl(seminar.image_url)}
           alt={seminar.title}
-          className="h-full w-full object-cover"
+          className="max-h-full max-w-full object-contain"
           onError={(e) => {
             (e.target as HTMLImageElement).src = "/9553.png";
           }}
