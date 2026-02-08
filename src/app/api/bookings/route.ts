@@ -70,16 +70,22 @@ export async function POST(request: NextRequest) {
     const formattedDate = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 
     // Googleカレンダー「イベントを追加」URL（予約完了メールの「カレンダーに登録」用）
+    // スプレッドシートの日時は JST で扱うため、JST → UTC に変換して dates を生成する
     const buildCalendarAddUrl = (): string | undefined => {
       if (!seminar.date) return undefined;
-      const start = new Date(seminar.date);
-      const end = new Date(start.getTime() + (seminar.duration_minutes || 60) * 60 * 1000);
-      const fmt = (d: Date) =>
-        `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}T${String(d.getUTCHours()).padStart(2, "0")}${String(d.getUTCMinutes()).padStart(2, "0")}${String(d.getUTCSeconds()).padStart(2, "0")}Z`;
+      const m = String(seminar.date).match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+      if (!m) return undefined;
+      const [, y, mo, d, h, min] = m.map(Number);
+      // 日時を JST として解釈し、UTC のミリ秒に変換（JST = UTC+9 → 9時間引く）
+      const jstMs = Date.UTC(y, mo - 1, d, h, min, 0);
+      const utcStart = new Date(jstMs - 9 * 60 * 60 * 1000);
+      const utcEnd = new Date(utcStart.getTime() + (seminar.duration_minutes || 60) * 60 * 1000);
+      const fmt = (date: Date) =>
+        `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, "0")}${String(date.getUTCDate()).padStart(2, "0")}T${String(date.getUTCHours()).padStart(2, "0")}${String(date.getUTCMinutes()).padStart(2, "0")}${String(date.getUTCSeconds()).padStart(2, "0")}Z`;
       const params = new URLSearchParams({
         action: "TEMPLATE",
         text: seminar.title || "セミナー",
-        dates: `${fmt(start)}/${fmt(end)}`,
+        dates: `${fmt(utcStart)}/${fmt(utcEnd)}`,
       });
       if (seminar.meet_url) params.set("location", seminar.meet_url);
       return `https://calendar.google.com/calendar/render?${params.toString()}`;
