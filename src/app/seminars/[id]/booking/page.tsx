@@ -309,13 +309,13 @@ export default function BookingPage({
               </p>
             </div>
 
-            {/* 送信ボタン */}
-            <div className="flex gap-3 pt-4">
+            {/* 送信ボタン（カード中央） */}
+            <div className="flex flex-col items-center pt-4">
               <Button
                 type="submit"
                 size="lg"
                 disabled={loading}
-                className="flex-1 w-full text-white rounded-xl h-14 text-lg font-semibold"
+                className="w-full max-w-md text-white rounded-xl h-14 text-lg font-semibold"
                 style={{
                   background:
                     "linear-gradient(to right, hsl(262, 83%, 58%), hsl(330, 81%, 60%))",
@@ -323,15 +323,12 @@ export default function BookingPage({
               >
                 {loading ? "送信中..." : "この内容で申し込む"}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                onClick={() => router.push("/")}
-                disabled={loading}
+              <Link
+                href="/seminars"
+                className="mt-4 text-sm text-muted-foreground hover:underline"
               >
-                キャンセル
-              </Button>
+                キャンセルする
+              </Link>
             </div>
           </form>
         </CardContent>
