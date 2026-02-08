@@ -2,19 +2,17 @@ import { getMasterData, findMasterRowById } from "@/lib/google/sheets";
 import type { Seminar } from "@/lib/types";
 
 // マスタースプレッドシート「セミナー一覧」シートの列順:
-// A:id B:title C:description D:date E:duration_minutes F:capacity
-// G:current_bookings H:speaker I:meet_url J:calendar_event_id
-// K:status L:spreadsheet_id M:肩書き N:開催形式 O:対象 P:画像URL Q:created_at R:updated_at S:参考URL
+// 新レイアウト(20列): ... O:対象 P:招待コード Q:画像URL R:created_at S:updated_at T:参考URL
 
 /**
  * シートの1行を Seminar オブジェクトに変換する。
- * Google Sheets APIは末尾の空セルを省略するため、row.length で新旧レイアウトを判定するのは不正確。
- * N列(インデックス13)が開催形式の正規値になっているか確認する。
+ * row.length >= 20 のとき招待コード列(P)あり。それ未満は従来レイアウト。
  */
 export function rowToSeminar(row: string[]): Seminar {
   const formatVal = row[13];
   const isNewLayout =
     formatVal === "venue" || formatVal === "online" || formatVal === "hybrid";
+  const hasInvitationCode = isNewLayout && row.length >= 20;
   return {
     id: row[0] || "",
     title: row[1] || "",
@@ -29,12 +27,13 @@ export function rowToSeminar(row: string[]): Seminar {
     status: (row[10] as Seminar["status"]) || "draft",
     spreadsheet_id: row[11] || "",
     speaker_title: isNewLayout ? row[12] || "" : "",
-    speaker_reference_url: isNewLayout ? row[18] || "" : "",
+    speaker_reference_url: isNewLayout ? (hasInvitationCode ? row[19] || "" : row[18] || "") : "",
     format: (isNewLayout ? row[13] : "online") as Seminar["format"],
     target: (isNewLayout ? row[14] : "public") as Seminar["target"],
-    image_url: isNewLayout ? row[15] || "" : "",
-    created_at: isNewLayout ? row[16] || "" : row[12] || "",
-    updated_at: isNewLayout ? row[17] || "" : row[13] || "",
+    invitation_code: hasInvitationCode ? row[15]?.trim() || "" : "",
+    image_url: isNewLayout ? (hasInvitationCode ? row[16] || "" : row[15] || "") : "",
+    created_at: isNewLayout ? (hasInvitationCode ? row[17] || "" : row[16] || "") : row[12] || "",
+    updated_at: isNewLayout ? (hasInvitationCode ? row[18] || "" : row[17] || "") : row[13] || "",
   };
 }
 

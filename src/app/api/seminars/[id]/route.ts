@@ -54,6 +54,7 @@ export async function PUT(
       body.speaker_title ?? current.speaker_title,
       body.format ?? current.format,
       body.target ?? current.target,
+      (body.invitation_code ?? current.invitation_code ?? "").trim(),
       current.image_url,
       current.created_at,
       now,
@@ -115,9 +116,9 @@ export async function DELETE(
 
     // 論理削除: status を cancelled に変更
     const updated = [...result.values];
-    while (updated.length < 19) updated.push("");
+    while (updated.length < 20) updated.push("");
     updated[10] = "cancelled";
-    updated[17] = now;
+    updated[18] = now;
 
     // マスタースプレッドシートを更新
     await updateMasterRow(result.rowIndex, updated);
@@ -128,9 +129,9 @@ export async function DELETE(
         const individualResult = await findRowById(current.spreadsheet_id, "イベント情報", id);
         if (individualResult) {
           const updatedIndividual = [...individualResult.values];
-          while (updatedIndividual.length < 19) updatedIndividual.push("");
+          while (updatedIndividual.length < 20) updatedIndividual.push("");
           updatedIndividual[10] = "cancelled";
-          updatedIndividual[17] = now;
+          updatedIndividual[18] = now;
           await updateRow(current.spreadsheet_id, "イベント情報", individualResult.rowIndex, updatedIndividual);
           console.log("[Seminar Delete] Individual spreadsheet synced");
         }

@@ -19,6 +19,7 @@ export default function ConfirmationPage({
   const router = useRouter();
   const searchParams = useSearchParams();
   const rid = searchParams.get("rid") ?? searchParams.get("booking_id");
+  const reservationNumber = searchParams.get("reservation_number");
   const [seminar, setSeminar] = useState<Seminar | null>(null);
 
   useEffect(() => {
@@ -62,10 +63,15 @@ export default function ConfirmationPage({
           <CardTitle>予約情報</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* 予約ID */}
+          {/* 予約番号 */}
           <div className="p-3 bg-gray-50 rounded-lg">
-            <p className="text-xs text-muted-foreground mb-1">予約ID</p>
-            <p className="font-mono text-sm font-medium">{rid}</p>
+            <p className="text-xs text-muted-foreground mb-1">予約番号</p>
+            <p className="font-mono text-sm font-medium">{reservationNumber || rid}</p>
+            {reservationNumber && (
+              <p className="text-xs text-muted-foreground mt-1">
+                変更・キャンセルはメール内のリンクからお手続きください。
+              </p>
+            )}
           </div>
 
           {/* セミナー情報 */}

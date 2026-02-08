@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
       format,
       target,
       status,
+      invitation_code,
     } = body;
 
     if (!title || !date || !speaker) {
@@ -108,33 +109,35 @@ export async function POST(request: NextRequest) {
     // 列順: A:id … R:updated_at S:参考URL
     const now = new Date().toISOString();
     const id = uuidv4();
+    const invitationCodeVal = (invitation_code ?? "").toString().trim();
     try {
       await appendRow(spreadsheetId, "イベント情報", [
-        id,                   // A
-        title,                // B
-        description || "",    // C
-        date,                 // D
-        String(duration),     // E
-        String(cap),          // F
-        "0",                  // G: current_bookings
-        speaker || "",        // H
-        meetUrl,              // I
-        calendarEventId,      // J
-        status || "draft",    // K
-        spreadsheetId,        // L
-        speaker_title || "",  // M
-        formatVal,            // N
-        targetVal,            // O
-        "",                   // P: image_url（画像登録時に更新）
-        now,                  // Q: created_at
-        now,                  // R: updated_at
-        speaker_reference_url || "",  // S: 参考URL
+        id,
+        title,
+        description || "",
+        date,
+        String(duration),
+        String(cap),
+        "0",
+        speaker || "",
+        meetUrl,
+        calendarEventId,
+        status || "draft",
+        spreadsheetId,
+        speaker_title || "",
+        formatVal,
+        targetVal,
+        invitationCodeVal,    // P: 招待コード
+        "",                   // Q: image_url
+        now,                  // R: created_at
+        now,                  // S: updated_at
+        speaker_reference_url || "",  // T: 参考URL
       ]);
     } catch (err) {
       console.error("Failed to write event info:", err);
     }
 
-    // 4. マスタースプレッドシートに登録
+    // 4. マスタースプレッドシートに登録（20列: 招待コードをP列に追加）
     const masterRow = [
       id,
       title,
@@ -151,10 +154,11 @@ export async function POST(request: NextRequest) {
       speaker_title || "",
       formatVal,
       targetVal,
-      "",        // image_url（画像登録時に更新）
+      invitationCodeVal,
+      "",
       now,
       now,
-      speaker_reference_url || "",  // S: 参考URL
+      speaker_reference_url || "",
     ];
 
     await appendMasterRow(masterRow);

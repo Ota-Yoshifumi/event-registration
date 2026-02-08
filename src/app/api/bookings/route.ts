@@ -1,45 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { findMasterRowById, appendRow, updateCell, findRowById, updateRow } from "@/lib/google/sheets";
+import {
+  findMasterRowById,
+  appendRow,
+  updateCell,
+  findRowById,
+  updateRow,
+  getSheetData,
+  appendReservationIndex,
+} from "@/lib/google/sheets";
 import { sendReservationConfirmation, sendCancellationNotification } from "@/lib/email/resend";
-import type { Seminar } from "@/lib/types";
-
-// マスタースプレッドシート列順: A~S (新レイアウトは19列、S:参考URL)
-function rowToSeminar(row: string[]): Seminar {
-  const isNewLayout = row.length >= 18;
-  return {
-    id: row[0] || "",
-    title: row[1] || "",
-    description: row[2] || "",
-    date: row[3] || "",
-    duration_minutes: parseInt(row[4] || "0", 10),
-    capacity: parseInt(row[5] || "0", 10),
-    current_bookings: parseInt(row[6] || "0", 10),
-    speaker: row[7] || "",
-    meet_url: row[8] || "",
-    calendar_event_id: row[9] || "",
-    status: (row[10] as Seminar["status"]) || "draft",
-    spreadsheet_id: row[11] || "",
-    speaker_title: isNewLayout ? row[12] || "" : "",
-    speaker_reference_url: isNewLayout ? row[18] || "" : "",
-    format: (isNewLayout ? row[13] : "online") as Seminar["format"],
-    target: (isNewLayout ? row[14] : "public") as Seminar["target"],
-    image_url: isNewLayout ? row[15] || "" : "",
-    created_at: isNewLayout ? row[16] || "" : row[12] || "",
-    updated_at: isNewLayout ? row[17] || "" : row[13] || "",
-  };
-}
+import { rowToSeminar } from "@/lib/seminars";
+import { isMemberDomainEmail } from "@/lib/member-domains";
+import { generateReservationNumber } from "@/lib/reservation-number";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { seminar_id, name, email, company, department, phone } = body;
+    const { seminar_id, name, email, company, department, phone, invitation_code } = body;
+    const emailTrimmed = (email || "").trim().toLowerCase();
 
     if (!seminar_id || !name || !email) {
       return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
     }
 
-    // マスターからセミナー情報を取得
     const seminarResult = await findMasterRowById(seminar_id);
     if (!seminarResult) {
       return NextResponse.json({ error: "セミナーが見つかりません" }, { status: 404 });
@@ -59,12 +43,95 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "セミナー用スプレッドシートが見つかりません" }, { status: 500 });
     }
 
+    // 会員限定セミナー: 会員企業ドメイン or 招待コードで受付
+    if (seminar.target === "members_only") {
+      const isMember = await isMemberDomainEmail(email);
+      if (!isMember) {
+        const code = (invitation_code || "").trim();
+        const expected = (seminar.invitation_code || "").trim().toLowerCase();
+        if (!expected || code.toLowerCase() !== expected) {
+          return NextResponse.json(
+            { error: "このセミナーは会員限定です。会員企業のメールアドレスでお申し込みください。" },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
+    // 重複申込チェック（同一セミナー・同一メール・確定）
+    const existingRows = await getSheetData(seminar.spreadsheet_id, "予約情報");
+    const duplicate = existingRows.slice(1).find(
+      (r) => r[2]?.trim().toLowerCase() === emailTrimmed && r[6] === "confirmed"
+    );
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const manageUrl = `${appUrl}/booking/manage`;
+    const date = new Date(seminar.date);
+    const formattedDate = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+
+    // Googleカレンダー「イベントを追加」URL（予約完了メールの「カレンダーに登録」用）
+    const buildCalendarAddUrl = (): string | undefined => {
+      if (!seminar.date) return undefined;
+      const start = new Date(seminar.date);
+      const end = new Date(start.getTime() + (seminar.duration_minutes || 60) * 60 * 1000);
+      const fmt = (d: Date) =>
+        `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}T${String(d.getUTCHours()).padStart(2, "0")}${String(d.getUTCMinutes()).padStart(2, "0")}${String(d.getUTCSeconds()).padStart(2, "0")}Z`;
+      const params = new URLSearchParams({
+        action: "TEMPLATE",
+        text: seminar.title || "セミナー",
+        dates: `${fmt(start)}/${fmt(end)}`,
+      });
+      if (seminar.meet_url) params.set("location", seminar.meet_url);
+      return `https://calendar.google.com/calendar/render?${params.toString()}`;
+    };
+    const calendarAddUrl = buildCalendarAddUrl();
+
+    if (duplicate) {
+      const existingId = duplicate[0];
+      const existingNumber = duplicate[11] || "";
+      try {
+        await sendReservationConfirmation({
+          to: email,
+          name,
+          seminarTitle: seminar.title,
+          seminarDate: formattedDate,
+          reservationNumber: existingNumber,
+          reservationId: existingId,
+          preSurveyUrl: `${appUrl}/seminars/${seminar_id}/pre-survey?rid=${existingId}`,
+          manageUrl,
+          meetUrl: seminar.meet_url || undefined,
+          calendarAddUrl: calendarAddUrl || undefined,
+          topMessage: "すでに次の内容で登録されています。変更する場合は、メール内の変更・キャンセルリンクからお手続きください。",
+        });
+      } catch (e) {
+        console.error("[Booking] Duplicate resend email failed:", e);
+      }
+      return NextResponse.json(
+        {
+          id: existingId,
+          seminar_id,
+          name,
+          email,
+          reservation_number: existingNumber || undefined,
+          meet_url: seminar.meet_url,
+          seminar_title: seminar.title,
+          seminar_date: seminar.date,
+          already_registered: true,
+        },
+        { status: 201 }
+      );
+    }
+
     const now = new Date().toISOString();
     const id = uuidv4();
 
-    // セミナー専用スプレッドシートの「予約情報」シートに追記
-    // 列順: ID, 氏名, メールアドレス, 会社名, 部署, 電話番号, ステータス,
-    //       事前アンケート回答済, 事後アンケート回答済, 予約日時, 備考
+    const receiptCount = Math.max(0, existingRows.length - 1);
+    const reservationNumber = generateReservationNumber(
+      seminar.date,
+      seminar.id,
+      receiptCount + 1
+    );
+
     const reservationRow = [
       id,
       name,
@@ -76,12 +143,13 @@ export async function POST(request: NextRequest) {
       "FALSE",
       "FALSE",
       now,
-      "", // 備考
+      "",
+      reservationNumber,
     ];
 
     await appendRow(seminar.spreadsheet_id, "予約情報", reservationRow);
+    await appendReservationIndex(reservationNumber, seminar.spreadsheet_id, id);
 
-    // マスターの current_bookings をインクリメント (G列 = index 6)
     await updateCell(
       process.env.GOOGLE_SPREADSHEET_ID!,
       "セミナー一覧",
@@ -90,28 +158,21 @@ export async function POST(request: NextRequest) {
       String(seminar.current_bookings + 1)
     );
 
-    // メール送信: 予約確認メール
     try {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      const preSurveyUrl = `${appUrl}/seminars/${seminar_id}/pre-survey?rid=${id}`;
-
-      // 日時のフォーマット
-      const date = new Date(seminar.date);
-      const formattedDate = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-
       await sendReservationConfirmation({
         to: email,
         name,
         seminarTitle: seminar.title,
         seminarDate: formattedDate,
+        reservationNumber,
         reservationId: id,
-        preSurveyUrl,
+        preSurveyUrl: `${appUrl}/seminars/${seminar_id}/pre-survey?rid=${id}`,
+        manageUrl,
         meetUrl: seminar.meet_url || undefined,
+        calendarAddUrl: calendarAddUrl || undefined,
       });
-
       console.log(`[Booking] Confirmation email sent to ${email}`);
     } catch (emailError) {
-      // メール送信失敗はログに記録するが、予約自体は成功として返す
       console.error("[Booking] Failed to send confirmation email:", emailError);
     }
 
@@ -121,6 +182,7 @@ export async function POST(request: NextRequest) {
         seminar_id,
         name,
         email,
+        reservation_number: reservationNumber,
         meet_url: seminar.meet_url,
         seminar_title: seminar.title,
         seminar_date: seminar.date,
@@ -175,22 +237,21 @@ export async function PUT(request: NextRequest) {
     const { seminar, reservationResult } = result;
     const row = reservationResult.values;
 
-    // 更新される項目のみ書き換え、それ以外は現在の値を維持
     const updated = [
-      row[0],                          // ID
-      name ?? row[1],                  // 氏名
-      email ?? row[2],                 // メールアドレス
-      company ?? row[3],               // 会社名
-      department ?? row[4],            // 部署
-      phone ?? row[5],                 // 電話番号
-      row[6],                          // ステータス
-      row[7],                          // 事前アンケート回答済
-      row[8],                          // 事後アンケート回答済
-      row[9],                          // 予約日時
-      row[10] || "",                   // 備考
+      row[0],
+      name ?? row[1],
+      email ?? row[2],
+      company ?? row[3],
+      department ?? row[4],
+      phone ?? row[5],
+      row[6],
+      row[7],
+      row[8],
+      row[9],
+      row[10] || "",
+      row[11] || "", // 予約番号
     ];
 
-    // セミナー専用スプレッドシートの該当行を更新
     await updateRow(seminar.spreadsheet_id, "予約情報", reservationResult.rowIndex, updated);
 
     return NextResponse.json({
@@ -228,12 +289,12 @@ export async function DELETE(request: NextRequest) {
     const { seminar, seminarResult, reservationResult } = result;
     const row = reservationResult.values;
 
-    // ステータスを cancelled に変更
     const updated = [
       row[0], row[1], row[2], row[3], row[4], row[5],
       "cancelled",
       row[7], row[8], row[9],
       row[10] || "",
+      row[11] || "", // 予約番号
     ];
 
     await updateRow(seminar.spreadsheet_id, "予約情報", reservationResult.rowIndex, updated);
@@ -248,13 +309,13 @@ export async function DELETE(request: NextRequest) {
       String(Math.max(0, currentBookings - 1))
     );
 
-    // メール送信: キャンセル確認メール
     try {
       await sendCancellationNotification({
-        to: row[2], // メールアドレス
-        name: row[1], // 氏名
+        to: row[2],
+        name: row[1],
         seminarTitle: seminar.title,
         reservationId: id,
+        reservationNumber: row[11] || undefined,
       });
 
       console.log(`[Booking] Cancellation email sent to ${row[2]}`);
