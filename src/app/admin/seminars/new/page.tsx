@@ -39,6 +39,7 @@ export default function NewSeminarPage() {
       capacity: Number(formData.get("capacity")) || 100,
       speaker: formData.get("speaker"),
       speaker_title: formData.get("speaker_title") || "",
+      speaker_reference_url: formData.get("speaker_reference_url") || "",
       format,
       target,
       status,
@@ -76,13 +77,24 @@ export default function NewSeminarPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="title">タイトル *</Label>
-              <Input id="title" name="title" required />
+              <Label htmlFor="title">タイトル *（改行で2行まで反映）</Label>
+              <Textarea
+                id="title"
+                name="title"
+                rows={2}
+                placeholder="1〜2行で入力。改行はそのまま表示に反映されます。"
+                required
+              />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">説明</Label>
-              <Textarea id="description" name="description" rows={4} />
+              <Label htmlFor="description">説明（改行はそのまま表示に反映）</Label>
+              <Textarea
+                id="description"
+                name="description"
+                rows={6}
+                placeholder="改行はそのまま表示に反映されます。&lt;br&gt; でも改行できます。"
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -137,6 +149,15 @@ export default function NewSeminarPage() {
                 <Label htmlFor="speaker_title">肩書き</Label>
                 <Input id="speaker_title" name="speaker_title" placeholder="例：株式会社〇〇 代表取締役" />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="speaker_reference_url">講師参考URL</Label>
+              <Input
+                id="speaker_reference_url"
+                name="speaker_reference_url"
+                type="url"
+                placeholder="https://..."
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

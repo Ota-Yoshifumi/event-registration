@@ -204,8 +204,6 @@ export default function AdminReservationsPage() {
           const hasPost = s.has_post_survey ?? false;
           const hasSheet = !!s.spreadsheet_id;
           const date = new Date(s.date);
-          const isFull = s.current_bookings >= s.capacity;
-          const spotsLeft = s.capacity - s.current_bookings;
           return (
             <Card
               key={s.id}
@@ -288,29 +286,28 @@ export default function AdminReservationsPage() {
                           : "会場開催"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="size-4 text-cyan-500" />
-                    <span className="truncate">
-                      登壇者: {s.speaker}
+                  <div className="flex items-start gap-2 text-sm text-foreground">
+                    <Users className="mt-0.5 size-4 shrink-0 text-cyan-500" />
+                    <div className="min-w-0">
+                      <div>
+                        登壇者： <span className="font-bold">{s.speaker}</span> 氏
+                      </div>
                       {s.speaker_title && (
-                        <span className="text-muted-foreground">
-                          （{s.speaker_title}）
-                        </span>
+                        <div className="mt-0.5 text-foreground">
+                          {s.speaker_title}
+                        </div>
                       )}
-                    </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* バッジ: 会員限定・残席・事前/事後・管理用 */}
+                {/* バッジ: 会員限定・事前/事後・管理用 */}
                 <div className="mb-4 flex flex-wrap gap-2">
                   {s.target === "members_only" && (
                     <Badge variant="secondary" className="text-xs">
                       会員限定
                     </Badge>
                   )}
-                  <Badge variant="secondary" className="text-xs">
-                    残席: {isFull ? "なし" : `${spotsLeft}名`}
-                  </Badge>
                   {hasSheet ? (
                     <>
                       <Badge

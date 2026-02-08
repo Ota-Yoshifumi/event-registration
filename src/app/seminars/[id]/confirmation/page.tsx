@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Calendar, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
+import { normalizeLineBreaks } from "@/lib/utils";
 import type { Seminar } from "@/lib/types";
 
 export default function ConfirmationPage({
@@ -70,7 +71,7 @@ export default function ConfirmationPage({
           {/* セミナー情報 */}
           <div>
             <p className="text-xs text-muted-foreground mb-2">セミナー名</p>
-            <p className="font-medium text-lg">{seminar.title}</p>
+            <p className="whitespace-pre-line font-medium text-lg">{normalizeLineBreaks(seminar.title)}</p>
           </div>
 
           {/* 開催日時 */}

@@ -7,6 +7,7 @@ import { Clock, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { normalizeLineBreaks } from "@/lib/utils";
 import type { Seminar } from "@/lib/types";
 import { format, isSameDay, getDaysInMonth, getDay } from "date-fns";
 import { ja } from "date-fns/locale";
@@ -183,8 +184,8 @@ export function SeminarCalendar({ seminars, onSelectSeminar }: SeminarCalendarPr
                                 ? "会場"
                                 : "ハイブリッド"}
                           </Badge>
-                          <h4 className="font-semibold text-foreground mb-2">
-                            {seminar.title}
+                          <h4 className="mb-2 whitespace-pre-line font-semibold text-foreground">
+                            {normalizeLineBreaks(seminar.title)}
                           </h4>
                           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">

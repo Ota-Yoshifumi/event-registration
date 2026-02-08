@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Seminar } from "@/lib/types";
+import { normalizeLineBreaks } from "@/lib/utils";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 
@@ -48,9 +49,6 @@ function formatDuration(minutes: number): string {
 }
 
 export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
-  const isFull = seminar.current_bookings >= seminar.capacity;
-  const spotsLeft = seminar.capacity - seminar.current_bookings;
-
   const date = new Date(seminar.date);
 
   return (
@@ -72,38 +70,38 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
         className="cursor-pointer h-full"
       >
         <Card className="group overflow-hidden hover:shadow-2xl transition-all duration-300 border border-border bg-card flex flex-col h-full">
-          {/* 画像エリア（16:9・オーバーレイなしで画像を明確に表示） */}
-          <div className="relative w-full aspect-[16/9] overflow-hidden bg-white">
+          {/* 画像エリア（16:9。画像は天地に合わせて表示、左右余白は白） */}
+          <div className="relative flex w-full items-center justify-center overflow-hidden bg-white aspect-[16/9]">
             <img
               src={resolveImageUrl(seminar.image_url)}
               alt={seminar.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              className="max-h-full max-w-full object-contain transition-transform duration-500 group-hover:scale-105"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "/9553.png";
               }}
             />
           </div>
 
-          {/* コンテンツ */}
-          <CardContent className="p-5 flex flex-col flex-1">
-            <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors line-clamp-2">
-              {seminar.title}
+          {/* コンテンツ（block-stack-tight でブロック間隔を統一） */}
+          <CardContent className="p-5 flex flex-col flex-1 block-stack-tight">
+            <h3 className="line-clamp-2 whitespace-pre-line text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+              {normalizeLineBreaks(seminar.title)}
             </h3>
 
-            <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-              {seminar.description}
+            <p className="line-clamp-2 whitespace-pre-line text-sm text-muted-foreground">
+              {normalizeLineBreaks(seminar.description)}
             </p>
 
-            <div className="space-y-2 mb-4">
+            <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-                <Clock className="w-4 h-4 text-primary" />
+                <Clock className="w-4 h-4 shrink-0 text-primary" />
                 <span>
-                  {format(date, "M月d日 (E) HH:mm", { locale: ja })} ・{" "}
+                  {format(date, "M月d日(E)HH:mm", { locale: ja })}・
                   {formatDuration(seminar.duration_minutes)}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm text-foreground">
-                <MapPin className="w-4 h-4 text-pink-500" />
+                <MapPin className="w-4 h-4 shrink-0 text-pink-500" />
                 <span className="truncate">
                   {seminar.format === "online"
                     ? "オンライン開催"
@@ -112,49 +110,44 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
                       : "会場開催"}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-foreground">
-                <Users className="w-4 h-4 text-cyan-500" />
-                <span>
-                  登壇者: {seminar.speaker}
+              <div className="flex items-start gap-2 text-sm text-foreground">
+                <Users className="mt-0.5 w-4 shrink-0 text-cyan-500" />
+                <div>
+                  <div>
+                    登壇者： <span className="font-bold">{seminar.speaker}</span> 氏
+                  </div>
                   {seminar.speaker_title && (
-                    <span className="text-foreground">
-                      （{seminar.speaker_title}）
-                    </span>
+                    <div className="mt-0.5 text-foreground">
+                      {seminar.speaker_title}
+                    </div>
                   )}
-                </span>
+                </div>
               </div>
             </div>
 
             {/* 対象タグ */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {seminar.target === "members_only" && (
+            {seminar.target === "members_only" && (
+              <div className="flex flex-wrap gap-2">
                 <Badge variant="secondary" className="text-xs">
                   会員限定
                 </Badge>
-              )}
-              <Badge variant="secondary" className="text-xs">
-                残席: {isFull ? "なし" : `${spotsLeft}名`}
-              </Badge>
-            </div>
+              </div>
+            )}
 
             {/* フッター */}
-            <div className="flex items-center justify-between pt-4 border-t border-border mt-auto">
-              <div className="text-sm text-muted-foreground">
+            <div className="mt-auto flex items-center justify-between border-t border-border pt-4 flex-shrink-0">
+              <div className="text-sm text-foreground">
                 <span className="font-medium">
                   {seminar.current_bookings}/{seminar.capacity}人
-                </span>{" "}
+                </span>
                 参加予定
               </div>
               <Button
                 size="sm"
-                className="rounded-full text-white"
-                style={{
-                  background:
-                    "linear-gradient(to right, hsl(262, 83%, 58%), hsl(330, 81%, 60%))",
-                }}
+                className="seminar-card-cta rounded-full border-0 text-white shadow-sm"
               >
                 詳細を見る
-                <ArrowRight className="w-4 h-4 ml-1" />
+                <ArrowRight className="ml-1 w-4 h-4" />
               </Button>
             </div>
           </CardContent>

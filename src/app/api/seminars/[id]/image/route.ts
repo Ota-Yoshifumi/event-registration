@@ -58,7 +58,7 @@ export async function POST(
     console.log("[Image Upload] Original row values length:", result.values.length);
 
     const updatedMaster = [...result.values];
-    while (updatedMaster.length < 18) updatedMaster.push("");
+    while (updatedMaster.length < 19) updatedMaster.push("");
     updatedMaster[15] = imageUrl;  // P列
     updatedMaster[17] = now;        // R列
 
@@ -72,10 +72,10 @@ export async function POST(
     if (individualSpreadsheetId) {
       console.log("[Image Upload] Updating individual spreadsheet:", individualSpreadsheetId);
 
-      const individualResult = await findRowById(individualSpreadsheetId, "イベント情報", id);
+        const individualResult = await findRowById(individualSpreadsheetId, "イベント情報", id);
       if (individualResult) {
         const updatedIndividual = [...individualResult.values];
-        while (updatedIndividual.length < 18) updatedIndividual.push("");
+        while (updatedIndividual.length < 19) updatedIndividual.push("");
         updatedIndividual[15] = imageUrl;  // P列
         updatedIndividual[17] = now;        // R列
 

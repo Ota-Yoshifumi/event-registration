@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { normalizeLineBreaks } from "@/lib/utils";
 import type { Seminar } from "@/lib/types";
 
 function formatDate(dateStr: string): string {
@@ -159,7 +160,7 @@ export default function ManagePage({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-lg bg-gray-50 p-4">
-              <h3 className="font-medium">{seminar.title}</h3>
+              <h3 className="whitespace-pre-line font-medium">{normalizeLineBreaks(seminar.title)}</h3>
               <p className="text-sm text-muted-foreground">{formatDate(seminar.date)}</p>
             </div>
             <p className="text-sm text-muted-foreground text-center">
@@ -193,7 +194,7 @@ export default function ManagePage({
         <CardContent className="space-y-6">
           {/* セミナー情報サマリー */}
           <div className="rounded-lg bg-gray-50 p-4 space-y-2">
-            <h3 className="font-semibold text-base">{seminar.title}</h3>
+            <h3 className="whitespace-pre-line font-semibold text-base">{normalizeLineBreaks(seminar.title)}</h3>
             <div className="space-y-1 text-sm text-gray-600">
               <div className="flex justify-between">
                 <span>開催日時</span>
@@ -205,10 +206,14 @@ export default function ManagePage({
               </div>
               <div className="flex justify-between">
                 <span>登壇者</span>
-                <span>
-                  {seminar.speaker}
-                  {seminar.speaker_title ? `（${seminar.speaker_title}）` : ""}
-                </span>
+                <div className="text-right">
+                  <div>
+                    <span className="font-bold">{seminar.speaker}</span> 氏
+                  </div>
+                  {seminar.speaker_title && (
+                    <div className="text-sm text-gray-600">{seminar.speaker_title}</div>
+                  )}
+                </div>
               </div>
               {seminar.format && (
                 <div className="flex justify-between">

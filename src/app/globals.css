@@ -49,6 +49,9 @@
   --color-cyan: hsl(var(--cyan));
   --color-pink: hsl(var(--pink));
   --color-orange: hsl(var(--orange));
+  /* レイアウト用 spacing（:root の変数と連携） */
+  --spacing-section: var(--section-gap);
+  --spacing-block: var(--block-gap);
 }
 
 :root {
@@ -107,6 +110,112 @@
   --sidebar-accent-foreground: 240 10% 10%;
   --sidebar-border: 240 10% 90%;
   --sidebar-ring: 262 83% 58%;
+
+  /* セミナー詳細ページ用（オーバーレイなしで画像を明確に表示） */
+  --seminar-detail-hero-height-mobile: 50vh;
+  --seminar-detail-hero-height-desktop: 60vh;
+  --seminar-detail-hero-overlay: none;
+
+  /* ========== 第 1 層：デザイントークン（スペーシング・コンテナ） ==========
+     Breakpoints: sm 640px, md 768px, lg 1024px（Tailwind と揃える） */
+
+  /* スペーシング尺度（Tailwind と揃える: 1 = 0.25rem） */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* コンテナ（レスポンシブは lg で上書き） */
+  --container-padding-x: 1rem;
+  --container-padding-y: 1.5rem;
+  --container-padding-y-lg: 2rem;
+
+  /* セクション間の余白（タイトル⇔本文など） */
+  --section-gap: 2rem;
+  --section-gap-lg: 2.5rem;
+
+  /* ブロック間（カード同士・カード内ブロック） */
+  --block-gap: 1.5rem;
+  --block-gap-lg: 2rem;
+
+  /* ヒーローセクション ⇔ 詳細セクションの間隔（小画面＝カード間の約2倍、PC＝タイトル上と同じ block-gap） */
+  --hero-to-detail-gap: 3rem;
+
+  /* ヒーローセクション内のタイトル行（左右のパディングを大きく、2行目下の余白を小さく） */
+  --hero-title-padding-inline: 2.5rem;
+  --hero-title-padding-block-top: var(--block-gap);
+  --hero-title-padding-block-bottom: var(--space-4);
+}
+@media (min-width: 1024px) {
+  :root {
+    --container-padding-x: 1.5rem;
+    --container-padding-y: var(--container-padding-y-lg);
+    --section-gap: var(--section-gap-lg);
+    --block-gap: var(--block-gap-lg);
+    --hero-to-detail-gap: var(--block-gap);
+    --hero-title-padding-inline: 3rem;
+  }
+}
+
+/* ========== 第 2 層：レイアウト用クラス（汎用） ==========
+   詳細は docs/design-guidelines.md を参照。 */
+
+.content-container {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--container-padding-x);
+  padding-right: var(--container-padding-x);
+  padding-block: var(--container-padding-y);
+}
+
+.section-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+}
+
+.block-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--block-gap);
+}
+
+.block-stack-tight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ヒーローセクション ＋ 詳細セクションの並び（gap は使わずスペーサーで間隔を確保＝重なり防止） */
+.hero-and-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+}
+
+/* ヒーローと詳細の間のスペーサー（他ページで使用する場合はこのクラスを利用） */
+.hero-to-detail-spacer {
+  display: block;
+  height: var(--hero-to-detail-gap);
+  min-height: var(--hero-to-detail-gap);
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ヒーローセクション内のタイトル行（左右パディング大きく、2行目下の余白小さく） */
+.hero-title-row {
+  padding-inline: var(--hero-title-padding-inline);
+  padding-top: var(--hero-title-padding-block-top);
+  padding-bottom: var(--hero-title-padding-block-bottom);
 }
 
 .dark {
@@ -185,6 +294,53 @@
 /* フロント セミナー一覧カード: 画像はオーバーレイ・グラデーションなしで表示。
    カード本文の日付・開催形式・登壇者は text-foreground（黒）、日付は font-bold。
    スタイルは components/seminar-card.tsx で適用。 */
+
+.seminar-card-cta {
+  background: var(--gradient-primary);
+}
+.seminar-card-cta:hover {
+  opacity: 0.95;
+}
+
+/* ========== セミナー詳細ページ（/seminars/[id]） ==========
+   ヒーローエリア・メインコンテンツ・カードの見た目をここで一元管理。
+   変数は :root に定義（--seminar-detail-hero-*）。 */
+
+.seminar-detail-hero {
+  height: var(--seminar-detail-hero-height-mobile);
+}
+@media (min-width: 1024px) {
+  .seminar-detail-hero {
+    height: var(--seminar-detail-hero-height-desktop);
+  }
+}
+
+/* 詳細ページのメインコンテンツ。中身は .content-container + .section-stack の組み合わせで構成可能。 */
+.seminar-detail-content {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--container-padding-x);
+  padding-right: var(--container-padding-x);
+  padding-block: var(--container-padding-y);
+}
+
+/* 詳細ページのカード共通（角丸・ボーダー・シャドウ） */
+.seminar-detail-card {
+  border-radius: var(--radius-xl);
+  border-width: 1px;
+  border-color: hsl(var(--border));
+  background-color: hsl(var(--card));
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+}
+
+/* セミナー詳細モーダル: 右サイドバー内のブロック間隔。.block-stack と同じ値。 */
+.seminar-detail-modal-sidebar-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--block-gap);
+}
 
 @layer base {
   * {

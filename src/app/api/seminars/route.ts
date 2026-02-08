@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
       capacity,
       speaker,
       speaker_title,
+      speaker_reference_url,
       format,
       target,
       status,
@@ -104,9 +105,7 @@ export async function POST(request: NextRequest) {
     const targetVal = ["members_only", "public"].includes(target) ? target : "public";
 
     // 3. セミナー専用スプレッドシートの「イベント情報」シートにも書き込む
-    // 列順: A:id B:title C:description D:date E:duration_minutes F:capacity
-    //       G:current_bookings H:speaker I:meet_url J:calendar_event_id
-    //       K:status L:spreadsheet_id M:肩書き N:開催形式 O:対象 P:画像URL Q:created_at R:updated_at
+    // 列順: A:id … R:updated_at S:参考URL
     const now = new Date().toISOString();
     const id = uuidv4();
     try {
@@ -129,6 +128,7 @@ export async function POST(request: NextRequest) {
         "",                   // P: image_url（画像登録時に更新）
         now,                  // Q: created_at
         now,                  // R: updated_at
+        speaker_reference_url || "",  // S: 参考URL
       ]);
     } catch (err) {
       console.error("Failed to write event info:", err);
@@ -154,6 +154,7 @@ export async function POST(request: NextRequest) {
       "",        // image_url（画像登録時に更新）
       now,
       now,
+      speaker_reference_url || "",  // S: 参考URL
     ];
 
     await appendMasterRow(masterRow);

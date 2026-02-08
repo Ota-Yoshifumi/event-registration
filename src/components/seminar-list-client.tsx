@@ -72,7 +72,7 @@ export function SeminarListClient({ seminars }: SeminarListClientProps) {
   return (
     <>
       {/* 検索・フィルタセクション */}
-      <section className="container mx-auto px-4 -mt-8 relative z-20">
+      <section className="content-container -mt-8 relative z-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -160,12 +160,12 @@ export function SeminarListClient({ seminars }: SeminarListClientProps) {
       {/* コンテンツセクション */}
       <section
         id="seminar-list"
-        className="container mx-auto px-4 py-12"
+        className="content-container section-stack"
       >
         {viewMode === "grid" ? (
           <>
             {/* 件数表示 */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between">
               <h2 className="text-2xl md:text-3xl font-bold text-foreground">
                 <span
                   className="bg-clip-text text-transparent"
@@ -181,7 +181,7 @@ export function SeminarListClient({ seminars }: SeminarListClientProps) {
             </div>
 
             {filteredSeminars.length > 0 ? (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-[var(--block-gap)]">
                 {filteredSeminars.map((seminar, index) => (
                   <SeminarCard
                     key={seminar.id}
@@ -209,7 +209,7 @@ export function SeminarListClient({ seminars }: SeminarListClientProps) {
           </>
         ) : (
           <>
-            <div className="mb-8">
+            <div>
               <h2 className="text-2xl md:text-3xl font-bold text-foreground">
                 カレンダービュー
               </h2>
@@ -227,7 +227,7 @@ export function SeminarListClient({ seminars }: SeminarListClientProps) {
 
       {/* フッター */}
       <footer className="bg-card border-t border-border py-8">
-        <div className="container mx-auto px-4 text-center text-muted-foreground">
+        <div className="content-container text-center text-muted-foreground">
           <p>© 2026 Seminar Hub. All rights reserved.</p>
         </div>
       </footer>

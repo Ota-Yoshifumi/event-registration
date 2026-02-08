@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Calendar, Clock, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
+import { normalizeLineBreaks } from "@/lib/utils";
 import type { Seminar } from "@/lib/types";
 
 export default function BookingPage({
@@ -139,7 +140,7 @@ export default function BookingPage({
       {/* セミナー情報カード */}
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>{seminar.title}</CardTitle>
+          <CardTitle className="whitespace-pre-line">{normalizeLineBreaks(seminar.title)}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {/* 開催日 */}
