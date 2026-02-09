@@ -74,12 +74,12 @@ export default function AdminSurveysPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           アンケート結果
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="admin-description mt-2">
           セミナーを選択するとアンケート結果が表示されます。
         </p>
       </header>

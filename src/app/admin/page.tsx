@@ -40,12 +40,12 @@ export default function AdminExecutionListPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           実施一覧
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="admin-description mt-2">
           実施済みのセミナーと、開催時の登録者数などの統計です。アンケート評価結果は今後表示予定です。
         </p>
       </header>
