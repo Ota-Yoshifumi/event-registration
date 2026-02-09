@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import {
   getMasterData,
+  getMasterDataForTenant,
   appendMasterRow,
   createSeminarSpreadsheet,
   appendRow,
@@ -13,10 +14,19 @@ import { getSurveyQuestions } from "@/lib/survey/storage";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    const tenant = searchParams.get("tenant");
     const statusFilter = searchParams.get("status");
     const withSurveyStatus = searchParams.get("with_survey_status") === "1";
 
-    const rows = await getMasterData();
+    const rows = tenant
+      ? await getMasterDataForTenant(tenant)
+      : await getMasterData();
+    if (!rows) {
+      return NextResponse.json(
+        tenant ? [] : { error: "マスターデータの取得に失敗しました" },
+        { status: tenant ? 200 : 500 }
+      );
+    }
     let seminars = rows.slice(1).filter((row) => row[0]?.trim()).map(rowToSeminar);
 
     if (statusFilter) {

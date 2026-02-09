@@ -115,6 +115,27 @@ export async function setSheetValues(
 }
 
 /**
+ * 指定シートの指定範囲の値をクリアする。
+ * 初期化スクリプトでデータ行のみ消してヘッダーを残すために使用。
+ */
+export async function clearSheetRange(
+  spreadsheetId: string,
+  sheetName: string,
+  rangeA1: string
+): Promise<void> {
+  const token = await getAccessToken();
+  const range = rangeA1.includes("!") ? rangeA1 : `${sheetName}!${rangeA1}`;
+  const response = await fetch(
+    `${SHEETS_API}/${spreadsheetId}/values/${encodeURIComponent(range)}:clear`,
+    { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`シートのクリアに失敗しました (${sheetName}): ${error}`);
+  }
+}
+
+/**
  * スプレッドシートのシート名一覧を取得する。
  */
 export async function getSpreadsheetSheetTitles(
@@ -288,6 +309,38 @@ export async function getMasterData(): Promise<string[][]> {
   return getSheetData(getMasterSpreadsheetId(), "セミナー一覧");
 }
 
+/** テナント指定時用: そのテナントのマスター「セミナー一覧」の行を返す。未設定なら null。 */
+export async function getMasterDataForTenant(
+  tenant: string
+): Promise<string[][] | null> {
+  const { getTenantConfig } = await import("@/lib/tenant-config");
+  const config = getTenantConfig(tenant);
+  if (!config) return null;
+  const rows = await getSheetData(config.masterSpreadsheetId, "セミナー一覧");
+  return rows;
+}
+
+/** テナントのマスターで ID に一致する行を返す。未設定・未検出なら null。 */
+export async function findMasterRowByIdForTenant(
+  tenant: string,
+  id: string
+): Promise<{ rowIndex: number; values: string[] } | null> {
+  const config = (await import("@/lib/tenant-config")).getTenantConfig(tenant);
+  if (!config) return null;
+  return findRowById(config.masterSpreadsheetId, "セミナー一覧", id);
+}
+
+/** テナントのマスターの指定行を更新する。 */
+export async function updateMasterRowForTenant(
+  tenant: string,
+  rowIndex: number,
+  values: string[]
+): Promise<void> {
+  const config = (await import("@/lib/tenant-config")).getTenantConfig(tenant);
+  if (!config) throw new Error("テナント未設定");
+  return updateRow(config.masterSpreadsheetId, "セミナー一覧", rowIndex, values);
+}
+
 export async function appendMasterRow(values: string[]): Promise<void> {
   return appendRow(getMasterSpreadsheetId(), "セミナー一覧", values);
 }
@@ -394,6 +447,33 @@ export async function appendReservationIndex(
   await appendRow(getMasterSpreadsheetId(), RESERVATION_INDEX_SHEET_NAME, [
     reservationNumber.trim().toLowerCase(),
     spreadsheetId,
+    reservationId,
+  ]);
+}
+
+/** 指定したマスタースプレッドシートに「予約番号インデックス」シートがなければ作成する（テナント用）。 */
+export async function ensureReservationIndexSheetFor(
+  masterSpreadsheetId: string
+): Promise<void> {
+  const titles = await getSpreadsheetSheetTitles(masterSpreadsheetId);
+  if (titles.includes(RESERVATION_INDEX_SHEET_NAME)) return;
+  await addSheet(masterSpreadsheetId, RESERVATION_INDEX_SHEET_NAME);
+  await setSheetValues(masterSpreadsheetId, RESERVATION_INDEX_SHEET_NAME, [
+    RESERVATION_INDEX_HEADER,
+  ]);
+}
+
+/** 指定したマスタースプレッドシートの予約番号インデックスに1件追加（テナント用）。 */
+export async function appendReservationIndexToMaster(
+  masterSpreadsheetId: string,
+  reservationNumber: string,
+  seminarSpreadsheetId: string,
+  reservationId: string
+): Promise<void> {
+  await ensureReservationIndexSheetFor(masterSpreadsheetId);
+  await appendRow(masterSpreadsheetId, RESERVATION_INDEX_SHEET_NAME, [
+    reservationNumber.trim().toLowerCase(),
+    seminarSpreadsheetId,
     reservationId,
   ]);
 }

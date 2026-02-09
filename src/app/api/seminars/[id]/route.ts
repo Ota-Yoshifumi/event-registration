@@ -1,15 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findMasterRowById, updateMasterRow, findRowById, updateRow } from "@/lib/google/sheets";
+import {
+  findMasterRowById,
+  findMasterRowByIdForTenant,
+  updateMasterRow,
+  updateMasterRowForTenant,
+  findRowById,
+  updateRow,
+} from "@/lib/google/sheets";
 import { updateCalendarEvent, deleteCalendarEvent } from "@/lib/google/calendar";
 import { rowToSeminar } from "@/lib/seminars";
+import { isTenantKey } from "@/lib/tenant-config";
+
+async function resolveMasterRow(
+  id: string,
+  tenant?: string | null
+): Promise<{ rowIndex: number; values: string[] } | null> {
+  if (tenant && isTenantKey(tenant)) {
+    return findMasterRowByIdForTenant(tenant, id);
+  }
+  return findMasterRowById(id);
+}
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const result = await findMasterRowById(id);
+    const tenant = new URL(request.url).searchParams.get("tenant");
+    const result = await resolveMasterRow(id, tenant);
 
     if (!result) {
       return NextResponse.json({ error: "セミナーが見つかりません" }, { status: 404 });
@@ -29,7 +48,8 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const result = await findMasterRowById(id);
+    const tenant = body.tenant && isTenantKey(body.tenant) ? body.tenant : null;
+    const result = await resolveMasterRow(id, tenant);
 
     if (!result) {
       return NextResponse.json({ error: "セミナーが見つかりません" }, { status: 404 });
@@ -76,8 +96,11 @@ export async function PUT(
       }
     }
 
-    // マスタースプレッドシートを更新
-    await updateMasterRow(result.rowIndex, updated);
+    if (tenant) {
+      await updateMasterRowForTenant(tenant, result.rowIndex, updated);
+    } else {
+      await updateMasterRow(result.rowIndex, updated);
+    }
 
     // 個別イベントスプレッドシートの「イベント情報」シートも更新
     if (current.spreadsheet_id) {
@@ -100,12 +123,22 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const result = await findMasterRowById(id);
+    const url = new URL(request.url);
+    let tenant: string | null = url.searchParams.get("tenant");
+    if (!tenant || !isTenantKey(tenant)) {
+      try {
+        const body = await request.json();
+        tenant = body.tenant && isTenantKey(body.tenant) ? body.tenant : null;
+      } catch {
+        tenant = null;
+      }
+    }
+    const result = await resolveMasterRow(id, tenant);
 
     if (!result) {
       return NextResponse.json({ error: "セミナーが見つかりません" }, { status: 404 });
@@ -120,8 +153,11 @@ export async function DELETE(
     updated[10] = "cancelled";
     updated[18] = now;
 
-    // マスタースプレッドシートを更新
-    await updateMasterRow(result.rowIndex, updated);
+    if (tenant) {
+      await updateMasterRowForTenant(tenant, result.rowIndex, updated);
+    } else {
+      await updateMasterRow(result.rowIndex, updated);
+    }
 
     // 個別イベントスプレッドシートの「イベント情報」シートも更新
     if (current.spreadsheet_id) {

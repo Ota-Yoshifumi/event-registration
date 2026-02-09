@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,9 +19,17 @@ import type { TenantKey } from "@/lib/tenant-config";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tenantFromUrl = searchParams.get("tenant");
   const [tenant, setTenant] = useState<TenantKey | "">("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (tenantFromUrl && TENANT_KEYS.includes(tenantFromUrl as TenantKey)) {
+      setTenant(tenantFromUrl as TenantKey);
+    }
+  }, [tenantFromUrl]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,7 +52,7 @@ export default function AdminLoginPage() {
       }
 
       toast.success("ログインしました");
-      router.replace("/admin");
+      router.replace(data.tenant ? `/${data.tenant}/admin` : "/admin");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "ログインに失敗しました");

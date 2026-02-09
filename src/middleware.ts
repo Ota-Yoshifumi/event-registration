@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
-async function verifyToken(token: string, secret: string): Promise<boolean> {
+type JwtPayload = { tenant?: string; exp?: number };
+
+async function verifyAndDecodeToken(
+  token: string,
+  secret: string
+): Promise<{ valid: boolean; payload?: JwtPayload }> {
   try {
     const [headerB64, payloadB64, signatureB64] = token.split(".");
-    if (!headerB64 || !payloadB64 || !signatureB64) return false;
+    if (!headerB64 || !payloadB64 || !signatureB64)
+      return { valid: false };
 
     const encoder = new TextEncoder();
     const key = await crypto.subtle.importKey(
@@ -14,33 +20,54 @@ async function verifyToken(token: string, secret: string): Promise<boolean> {
       ["verify"]
     );
 
-    const signatureData = Uint8Array.from(atob(signatureB64.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
-      c.charCodeAt(0)
+    const signatureBytes = Uint8Array.from(
+      atob(signatureB64.replace(/-/g, "+").replace(/_/g, "/")),
+      (c) => c.charCodeAt(0)
     );
 
     const valid = await crypto.subtle.verify(
       "HMAC",
       key,
-      signatureData,
+      signatureBytes,
       encoder.encode(`${headerB64}.${payloadB64}`)
     );
 
-    if (!valid) return false;
+    if (!valid) return { valid: false };
 
-    const payload = JSON.parse(atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")));
+    const payload = JSON.parse(
+      atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"))
+    ) as JwtPayload;
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-      return false;
+      return { valid: false };
     }
 
-    return true;
+    return { valid: true, payload };
   } catch {
-    return false;
+    return { valid: false };
   }
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // テナント管理画面: /whgc-seminars/admin/*
+  if (pathname.startsWith("/whgc-seminars/admin")) {
+    if (pathname === "/whgc-seminars/admin/login") {
+      return NextResponse.next();
+    }
+    const token = request.cookies.get("admin_token")?.value;
+    const secret = process.env.ADMIN_JWT_SECRET;
+    if (!token || !secret) {
+      return NextResponse.redirect(new URL("/whgc-seminars/admin/login", request.url));
+    }
+    const { valid, payload } = await verifyAndDecodeToken(token, secret);
+    if (!valid || payload?.tenant !== "whgc-seminars") {
+      return NextResponse.redirect(new URL("/whgc-seminars/admin/login", request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // 共通管理画面: /admin/*
   if (pathname === "/admin/login") {
     return NextResponse.next();
   }
@@ -48,8 +75,11 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/admin")) {
     const token = request.cookies.get("admin_token")?.value;
     const secret = process.env.ADMIN_JWT_SECRET;
-
-    if (!token || !secret || !(await verifyToken(token, secret))) {
+    if (!token || !secret) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+    const { valid } = await verifyAndDecodeToken(token, secret);
+    if (!valid) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
   }
@@ -58,5 +88,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/whgc-seminars/admin/:path*"],
 };

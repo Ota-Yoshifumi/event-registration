@@ -43,6 +43,9 @@ npm install
 
 `.env.local.example` を `.env.local` にコピーして、各値を設定してください。
 
+- **単一テナント（従来）**: `GOOGLE_SPREADSHEET_ID`（マスター）、`GOOGLE_DRIVE_FOLDER_ID`（セミナー用シート保存先）、`GOOGLE_DRIVE_IMAGES_FOLDER_ID`（画像アップロード先）。
+- **マルチテナント**: 各テナントごとに `TENANT_*_MASTER_SPREADSHEET_ID` / `TENANT_*_DRIVE_FOLDER_ID` / `TENANT_*_DRIVE_IMAGES_FOLDER_ID` を設定。一覧は [Cloudflare 環境変数](docs/cloudflare-env-setup.md) を参照。
+
 ### 3. Google Cloud のセットアップ
 
 1. Google Cloud Console でプロジェクト作成
@@ -103,7 +106,7 @@ npm run deploy
 
 環境変数は Cloudflare ダッシュボード（Workers の **Settings** → **Variables and Secrets**）または `wrangler secret put <NAME>` で設定してください。
 
-## 主要ページ
+## 主要ページ（従来・単一テナント）
 
 | パス | 説明 |
 |------|------|
@@ -112,8 +115,122 @@ npm run deploy
 | `/seminars/[id]/booking` | 予約フォーム |
 | `/seminars/[id]/pre-survey` | 事前アンケート |
 | `/seminars/[id]/post-survey` | 事後アンケート |
+| `/booking/manage` | 予約番号で変更・キャンセル |
 | `/admin` | 管理ダッシュボード |
 | `/admin/seminars` | セミナー管理 |
 | `/admin/reservations` | 予約一覧 |
 | `/admin/member-domains` | 会員企業ドメイン管理 |
 | `/admin/surveys` | アンケート結果 |
+
+---
+
+## マルチテナント構成（4テナント）
+
+4つの運用単位で、同一 Cloudflare / 同一 Google API アカウントで運用します。  
+詳細は [`docs/multi-tenant-design.md`](docs/multi-tenant-design.md) を参照してください。
+
+### テナント一覧
+
+| テナントキー | 公開パス（フロント） | 想定用途 |
+|--------------|----------------------|----------|
+| `whgc-seminars` | `/whgc-seminars` | WHGC セミナー |
+| `kgri-pic-center` | `/kgri-pic-center` | KGRI PIC センター |
+| `aff-events` | `/aff-events` | AFF イベント |
+| `pic-courses` | `/pic-courses` | PIC コース |
+
+※ 現在は **`/whgc-seminars`** が実装済み。他3テナントは設計どおり同じURL構造で追加予定。
+
+### フロント画面 URL の構造（各テナント共通）
+
+各テナントの「公開パス」をベースに、以下のパスが用意されます。
+
+| パス | 説明 |
+|------|------|
+| `/{テナント}` | セミナー一覧（例: `/whgc-seminars`） |
+| `/{テナント}/[id]` | セミナー詳細 |
+| `/{テナント}/[id]/booking` | 予約フォーム |
+| `/{テナント}/[id]/confirmation` | 予約完了 |
+| `/{テナント}/[id]/manage` | 予約の変更・キャンセル |
+| `/{テナント}/[id]/pre-survey` | 事前アンケート |
+| `/{テナント}/[id]/post-survey` | 事後アンケート |
+
+共通: `/booking/manage` … 予約番号入力で変更・キャンセル（テナントは予約番号から判定）。
+
+### 管理画面 URL の構造（各テナント共通）
+
+| パス | 説明 |
+|------|------|
+| `/{テナント}/admin` | 管理トップ（例: `/whgc-seminars/admin`） |
+| `/{テナント}/admin/login` | ログイン |
+| `/{テナント}/admin/reservations` | 予約一覧 |
+| `/{テナント}/admin/seminars` | セミナー管理（実装予定） |
+| `/{テナント}/admin/seminars/new` | セミナー新規（実装予定） |
+| `/{テナント}/admin/seminars/[id]/edit` | セミナー編集（実装予定） |
+| `/{テナント}/admin/seminars/[id]/image` | 画像登録（実装予定） |
+| `/{テナント}/admin/member-domains` | 会員企業ドメイン（実装予定） |
+| `/{テナント}/admin/surveys` | アンケート結果（実装予定） |
+
+従来の `/admin` … 単一マスター（`GOOGLE_SPREADSHEET_ID`）用。テナントと併存可能。
+
+### API
+
+- 従来: `/api/seminars`, `/api/bookings`, `/api/reservations` など（body/query に `tenant` を付与するとテナント用マスターを参照）。
+- テナント用: 同一 `/api/...` に `tenant=whgc-seminars` 等を付けて利用。
+
+---
+
+## テナントごとの確認事項（Drive・スプレッドシート）
+
+各テナントで「フロント一覧表示」「管理画面」「画像表示・アップロード」が動くためには、以下が正しく設定され、**サービスアカウントの権限**が通っている必要があります。
+
+### 環境変数（1テナントあたり）
+
+| 種類 | 変数名（例: whgc-seminars） | 説明 |
+|------|-----------------------------|------|
+| マスター | `TENANT_WHGC_SEMINARS_MASTER_SPREADSHEET_ID` | そのテナントの予約管理マスターのスプレッドシートID |
+| Drive フォルダ | `TENANT_WHGC_SEMINARS_DRIVE_FOLDER_ID` | セミナー用スプレッドシートを格納する Drive フォルダID |
+| 画像フォルダ | `TENANT_WHGC_SEMINARS_DRIVE_IMAGES_FOLDER_ID` | セミナー画像のアップロード先（任意。未設定時は共通 `GOOGLE_DRIVE_IMAGES_FOLDER_ID` にフォールバック） |
+
+同様に `TENANT_KGRI_PIC_CENTER_*` / `TENANT_AFF_EVENTS_*` / `TENANT_PIC_COURSES_*` を定義します。
+
+### 確認チェックリスト（各テナント）
+
+各テナントについて、以下を確認してください。
+
+1. **Drive フォルダへのアクセス**
+   - Google Drive で該当テナント用フォルダを開き、**サービスアカウントのメール**（`GOOGLE_SERVICE_ACCOUNT_EMAIL`）を「編集者」で共有しているか確認する。
+   - 新規セミナー作成時に、このフォルダ内に「セミナー用スプレッドシート」が作成される。共有されていないと作成に失敗する。
+
+2. **画像フォルダへのアクセス**
+   - テナント別画像フォルダを使う場合: そのテナントの `seminar_images`（または `TENANT_*_DRIVE_IMAGES_FOLDER_ID` に設定したフォルダ）に、サービスアカウントを「編集者」で共有する。
+   - 共通1フォルダの場合: `GOOGLE_DRIVE_IMAGES_FOLDER_ID` に指定したフォルダに、サービスアカウントを共有する。
+   - 画像アップロード（管理画面のセミナー画像登録）が成功し、フロントで画像が表示されるか確認する。
+
+3. **スプレッドシートの読み込み**
+   - 該当テナントのマスター（`TENANT_*_MASTER_SPREADSHEET_ID`）を開き、**サービスアカウントのメール**に「編集者」または「閲覧者」で共有しているか確認する。
+   - **確認方法**:
+     - フロント: そのテナントのトップ（例: `https://<あなたのドメイン>/whgc-seminars`）を開き、セミナー一覧が表示されるか（マスターの「セミナー一覧」シートが読めているか）確認する。
+     - 管理: そのテナントの管理画面（例: `/whgc-seminars/admin`）にログインし、予約一覧やセミナー一覧が表示されるか確認する。
+
+### まとめ表（4テナント）
+
+| テナント | マスターID | Drive フォルダID | 画像フォルダID | フロント一覧 | 管理画面 | 画像 |
+|----------|------------|------------------|----------------|--------------|----------|------|
+| whgc-seminars | `TENANT_WHGC_SEMINARS_MASTER_SPREADSHEET_ID` | `TENANT_WHGC_SEMINARS_DRIVE_FOLDER_ID` | `TENANT_WHGC_SEMINARS_DRIVE_IMAGES_FOLDER_ID` または共通 | ✓ 確認 | ✓ 確認 | ✓ 確認 |
+| kgri-pic-center | `TENANT_KGRI_PIC_CENTER_MASTER_SPREADSHEET_ID` | `TENANT_KGRI_PIC_CENTER_DRIVE_FOLDER_ID` | 同上 | 実装後確認 | 実装後確認 | 実装後確認 |
+| aff-events | `TENANT_AFF_EVENTS_MASTER_SPREADSHEET_ID` | `TENANT_AFF_EVENTS_DRIVE_FOLDER_ID` | 同上 | 実装後確認 | 実装後確認 | 実装後確認 |
+| pic-courses | `TENANT_PIC_COURSES_MASTER_SPREADSHEET_ID` | `TENANT_PIC_COURSES_DRIVE_FOLDER_ID` | 同上 | 実装後確認 | 実装後確認 | 実装後確認 |
+
+※ いずれも、該当する Drive / スプレッドシートに**サービスアカウントを共有**しておかないとアクセスできません。
+
+---
+
+## 管理ユーザー向けガイド
+
+各テナントの**管理ユーザー**（運営担当者）向けに、以下をまとめたガイドがあります。
+
+- **管理画面の使い方**: ログイン、実施一覧・予約一覧・会員企業ドメイン・アンケート結果の操作手順
+- **全体のサービス構造**: 参加者向けの流れ、管理者向けの流れ、データの置き場所
+- **セキュリティ方針**: テナント分離、管理画面の保護、予約番号と本人確認、メール送信、管理者が心がけること
+
+→ **[管理ユーザー向けガイド（docs/admin-user-guide.md）](docs/admin-user-guide.md)**

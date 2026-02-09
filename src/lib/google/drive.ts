@@ -100,3 +100,37 @@ export async function moveFileToFolder(
     throw new Error(`移動に失敗しました (${fileId}): ${error}`);
   }
 }
+
+/**
+ * ファイルをコピーして指定フォルダに配置する。
+ * @param fileId コピー元のファイルID（スプレッドシート等）
+ * @param parentFolderId コピー先フォルダのID
+ * @param newName コピー後のファイル名（省略時は元の名前のまま）
+ * @returns コピーされたファイルのID
+ */
+export async function copyFile(
+  fileId: string,
+  parentFolderId: string,
+  newName?: string
+): Promise<string> {
+  const token = await getAccessToken();
+  const body: { parents?: string[]; name?: string } = { parents: [parentFolderId] };
+  if (newName) body.name = newName;
+
+  const response = await fetch(`${DRIVE_API}/${fileId}/copy`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`コピーに失敗しました (${fileId}): ${error}`);
+  }
+
+  const data = await response.json();
+  return data.id as string;
+}
