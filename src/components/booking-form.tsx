@@ -9,9 +9,11 @@ import { toast } from "sonner";
 
 interface BookingFormProps {
   seminarId: string;
+  /** テナントキー（例: whgc-seminars）。指定時はテナント用メール・マスターで予約する。 */
+  tenant?: string;
 }
 
-export function BookingForm({ seminarId }: BookingFormProps) {
+export function BookingForm({ seminarId, tenant }: BookingFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +22,7 @@ export function BookingForm({ seminarId }: BookingFormProps) {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const data = {
+    const data: Record<string, string> = {
       seminar_id: seminarId,
       name: formData.get("name") as string,
       email: formData.get("email") as string,
@@ -28,6 +30,7 @@ export function BookingForm({ seminarId }: BookingFormProps) {
       department: formData.get("department") as string,
       phone: formData.get("phone") as string,
     };
+    if (tenant) data.tenant = tenant;
 
     try {
       const res = await fetch("/api/bookings", {
@@ -43,9 +46,10 @@ export function BookingForm({ seminarId }: BookingFormProps) {
 
       const result = await res.json();
       toast.success("予約が完了しました");
-      router.push(
-        `/seminars/${seminarId}/confirmation?rid=${result.id}`
-      );
+      const confirmationPath = tenant
+        ? `/${tenant}/${seminarId}/confirmation?rid=${result.id}`
+        : `/seminars/${seminarId}/confirmation?rid=${result.id}`;
+      router.push(confirmationPath);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "予約に失敗しました");
     } finally {

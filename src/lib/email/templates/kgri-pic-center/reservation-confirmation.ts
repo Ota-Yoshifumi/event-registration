@@ -1,0 +1,2 @@
+/** テナント kgri-pic-center 用。カスタムする場合はこのファイルの HTML を編集してください。 */
+export { render } from "../default/reservation-confirmation";

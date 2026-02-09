@@ -84,6 +84,64 @@ Cloudflare と Google API は共通のため、既存の
 `GOOGLE_SERVICE_ACCOUNT_EMAIL` / `GOOGLE_PRIVATE_KEY` / `GOOGLE_PRIVATE_KEY_ID`  
 等はそのまま使い、**テナントごとにマスターIDとフォルダIDだけ切り替える**形にします。
 
+### 3.3 マスターシートの配置（手動 or スクリプト）
+
+**手動で配置する場合**（推奨: フォルダ・シートの関係を把握しやすい）
+
+1. **各テナントフォルダのIDを控える**  
+   各フォルダ（whgc-seminars, kgri-pic-center, aff-events, pic-courses）を開き、URL の `folders/` の直後がフォルダIDです。  
+   `.env.local` に以下を設定します。
+   - `TENANT_WHGC_SEMINARS_DRIVE_FOLDER_ID` = whgc-seminars フォルダのID
+   - `TENANT_KGRI_PIC_CENTER_DRIVE_FOLDER_ID` = kgri-pic-center フォルダのID
+   - `TENANT_AFF_EVENTS_DRIVE_FOLDER_ID` = aff-events フォルダのID
+   - `TENANT_PIC_COURSES_DRIVE_FOLDER_ID` = pic-courses フォルダのID
+
+2. **マスターシートを各フォルダにコピー**  
+   - master_folder 内の「予約管理マスター」スプレッドシートを開く  
+   - 右クリック → **「コピーを作成」**  
+   - コピーしたファイルの名前を任意で変更（例: `予約管理マスター（whgc-seminars）`）  
+   - コピーを該当テナントのフォルダに**移動**（ドラッグまたは「移動」で whgc-seminars 等のフォルダを指定）  
+   - 上記を **whgc-seminars / kgri-pic-center / aff-events / pic-courses の4回**繰り返す（テナントごとに1つずつコピーを作成して、それぞれのフォルダに移動）
+
+3. **各コピーを初期化**  
+   各テナント用に移動したスプレッドシートを開き、次のシートの**2行目以降（データ行）を削除**し、ヘッダーだけ残します。  
+   - **セミナー一覧** … 2行目以降を削除  
+   - **会員企業ドメイン** … 2行目以降を削除  
+   - **予約番号インデックス** … 2行目以降を削除  
+
+4. **マスターのスプレッドシートIDを .env に設定**  
+   各テナント用マスターを開いたときの URL  
+   `https://docs.google.com/spreadsheets/d/【ここがID】/edit`  
+   の「ここがID」を控え、`.env.local` に設定します。
+   - `TENANT_WHGC_SEMINARS_MASTER_SPREADSHEET_ID` = whgc-seminars 用マスターのID
+   - `TENANT_KGRI_PIC_CENTER_MASTER_SPREADSHEET_ID` = kgri-pic-center 用マスターのID
+   - `TENANT_AFF_EVENTS_MASTER_SPREADSHEET_ID` = aff-events 用マスターのID
+   - `TENANT_PIC_COURSES_MASTER_SPREADSHEET_ID` = pic-courses 用マスターのID
+
+**空のマスターをスクリプトで作成する場合**
+
+- 上記の「各フォルダのID」を先に `.env.local` に設定したうえで、  
+  `npx tsx scripts/create-tenant-master.ts whgc-seminars` を各テナントで実行します。  
+- 各実行で「ヘッダーだけの空のマスター」が、そのテナントのフォルダに1つずつ作成されます。  
+- 実行後に表示されるスプレッドシートIDを、対応する `TENANT_*_MASTER_SPREADSHEET_ID` に設定します。  
+- master_folder の既存マスターをテンプレートにしたい場合は、手動でコピー＋初期化する方が向いています。
+
+**drive_id（フォルダID）は必ず設定する**
+
+- 各テナントの **`TENANT_*_DRIVE_FOLDER_ID`** は、**新規セミナー作成時に「セミナー用スプレッドシート」を保存するフォルダ**として使います。  
+- 未設定だと、テナント用マスターは読めても、そのテナントでセミナーを新規作成したときにシートの保存先が決まらずエラーになるため、**フォルダごとに drive_id を設定してください**。
+
+### 3.4 画像フォルダ（seminar_images）
+
+セミナー画像のアップロード先は、**手動で各テナントのドライブフォルダ内に `seminar_images` を作成する**形で問題ありません。
+
+- **共通1フォルダでよい場合**  
+  現状のとおり、`GOOGLE_DRIVE_IMAGES_FOLDER_ID` を1つだけ設定し、全テナントで同じ画像フォルダを使う運用にできます。
+- **テナントごとに画像を分けたい場合**  
+  各テナントフォルダ（whgc-seminars 等）の直下に `seminar_images` フォルダを手動で作成し、そのフォルダIDを `.env.local` に  
+  `TENANT_WHGC_SEMINARS_DRIVE_IMAGES_FOLDER_ID` のように格納します。  
+  その場合、アプリ側で「テナント指定時はそのテナントの画像フォルダにアップロードする」ようにする変更が必要です（未対応の場合は実装を追加する）。
+
 ---
 
 ## 4. アプリ側の構成（Next.js / Cloudflare）
@@ -188,6 +246,33 @@ Cloudflare と Google API は共通のため、既存の
 ---
 
 以上が、**master_folder に既存を保管したうえで、4テナントに分けて運用する**ための設計です。実装は上記フェーズに沿って進めるとよいです。
+
+---
+
+## テナント別メール設定（Resend）※実装済み
+
+テナントごとに **送信者名・送信元メール・本文フッターの問い合わせ先** を env で設定し、**本文はテナント別テンプレート（B案）** で差し替えています。Resend API キーは **共通1キー**（`RESEND_API_KEY`）のみ使用します。
+
+### 環境変数（1テナントあたり3つ）
+
+| 環境変数（例） | 説明 |
+|----------------|------|
+| `TENANT_WHGC_SEMINARS_RESEND_FROM_NAME` | 送信者名（例: WHGC事務局［送信専用］） |
+| `TENANT_WHGC_SEMINARS_RESEND_FROM_EMAIL` | 送信元メール（Resend で検証済みドメイン） |
+| `TENANT_WHGC_SEMINARS_RESEND_CONTACT_EMAIL` | 本文フッターの問い合わせ先 |
+
+同様に `TENANT_KGRI_PIC_CENTER_*` / `TENANT_AFF_EVENTS_*` / `TENANT_PIC_COURSES_*` を定義。未設定のテナントは共通の `RESEND_FROM_EMAIL` とデフォルトの送信者名・問い合わせ先にフォールバックします。
+
+### 本文テンプレート（B案・個別テンプレート）
+
+- **配置**: `src/lib/email/templates/default/`（共通フォールバック）、`src/lib/email/templates/whgc-seminars/` などテナントごとのフォルダ。
+- **ファイル**: `reservation-confirmation.ts`（予約完了メール）、`cancellation.ts`（キャンセル通知）。各ファイルは `render(data, options)` で HTML 文字列を返します。
+- **カスタム**: 運用開始後、テナントごとに `whgc-seminars/reservation-confirmation.ts` などを編集して本文を変更できます。初期状態は `default` を re-export しています。
+
+### API
+
+- `POST /api/bookings` の body に **`tenant`**（例: `whgc-seminars`）を付与すると、そのテナントのマスターでセミナー検索・予約番号インデックス更新を行い、メール送信時にそのテナントの送信者名・送信元・問い合わせ先・テンプレートを使用します。
+- `PUT` / `DELETE`（予約更新・キャンセル）も body に `tenant` を付けるとテナント用マスターを参照し、キャンセル通知メールもテナント用設定で送信します。
 
 ---
 
