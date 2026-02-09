@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { TENANT_KEYS, TENANT_LABELS } from "@/lib/tenant-config";
 import type { TenantKey } from "@/lib/tenant-config";
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tenantFromUrl = searchParams.get("tenant");
@@ -106,5 +106,26 @@ export default function AdminLoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="force-light flex min-h-screen items-center justify-center bg-background">
+          <Card className="w-full max-w-sm border-border shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-center text-foreground">管理画面ログイン</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">読み込み中...</p>
+            </CardContent>
+          </Card>
+        </div>
+      }
+    >
+      <AdminLoginForm />
+    </Suspense>
   );
 }
