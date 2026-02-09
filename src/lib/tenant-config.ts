@@ -15,6 +15,7 @@ export type TenantKey = (typeof TENANT_KEYS)[number];
 export interface TenantConfig {
   masterSpreadsheetId: string;
   driveFolderId: string;
+  driveImagesFolderId: string;
 }
 
 function getEnvKey(tenant: string): TenantKey | null {
@@ -51,10 +52,22 @@ export function getTenantConfig(tenant: string): TenantConfig | null {
             ? process.env.TENANT_PIC_COURSES_DRIVE_FOLDER_ID
             : undefined;
 
+  const imagesFolderId =
+    key === "whgc-seminars"
+      ? process.env.TENANT_WHGC_SEMINARS_DRIVE_IMAGES_FOLDER_ID
+      : key === "kgri-pic-center"
+        ? process.env.TENANT_KGRI_PIC_CENTER_DRIVE_IMAGES_FOLDER_ID
+        : key === "aff-events"
+          ? process.env.TENANT_AFF_EVENTS_DRIVE_IMAGES_FOLDER_ID
+          : key === "pic-courses"
+            ? process.env.TENANT_PIC_COURSES_DRIVE_IMAGES_FOLDER_ID
+            : undefined;
+
   if (!masterId) return null;
   return {
     masterSpreadsheetId: masterId,
     driveFolderId: folderId ?? "",
+    driveImagesFolderId: imagesFolderId ?? "",
   };
 }
 

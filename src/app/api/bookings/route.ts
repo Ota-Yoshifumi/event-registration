@@ -90,7 +90,12 @@ export async function POST(request: NextRequest) {
       // 日時を JST として解釈し、UTC のミリ秒に変換（JST = UTC+9 → 9時間引く）
       const jstMs = Date.UTC(y, mo - 1, d, h, min, 0);
       const utcStart = new Date(jstMs - 9 * 60 * 60 * 1000);
-      const utcEnd = new Date(utcStart.getTime() + (seminar.duration_minutes || 60) * 60 * 1000);
+      // end_time ("HH:mm") から終了UTC を計算
+      const endMatch = (seminar.end_time || "").match(/^(\d{2}):(\d{2})$/);
+      const endH = endMatch ? Number(endMatch[1]) : h + 1;
+      const endMin = endMatch ? Number(endMatch[2]) : min;
+      const jstEndMs = Date.UTC(y, mo - 1, d, endH, endMin, 0);
+      const utcEnd = new Date(jstEndMs - 9 * 60 * 60 * 1000);
       const fmt = (date: Date) =>
         `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, "0")}${String(date.getUTCDate()).padStart(2, "0")}T${String(date.getUTCHours()).padStart(2, "0")}${String(date.getUTCMinutes()).padStart(2, "0")}${String(date.getUTCSeconds()).padStart(2, "0")}Z`;
       const params = new URLSearchParams({

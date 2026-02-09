@@ -39,10 +39,7 @@ function resolveImageUrl(url: string | undefined): string {
   return "/9553.png";
 }
 
-/** duration_minutes を「○分」で表示（例: 90分） */
-function formatDuration(minutes: number): string {
-  return `${minutes}分`;
-}
+
 
 export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
   const date = new Date(seminar.date);
@@ -93,7 +90,7 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
                 <Clock className="w-4 h-4 shrink-0 text-primary" />
                 <span>
                   {format(date, "M月d日(E)HH:mm", { locale: ja })}・
-                  {formatDuration(seminar.duration_minutes)}
+                  ～ {seminar.end_time || ""}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm text-foreground">

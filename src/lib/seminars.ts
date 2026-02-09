@@ -19,7 +19,7 @@ export function rowToSeminar(row: string[]): Seminar {
     title: row[1] || "",
     description: row[2] || "",
     date: row[3] || "",
-    duration_minutes: parseInt(row[4] || "0", 10),
+    end_time: row[4] || "",
     capacity: parseInt(row[5] || "0", 10),
     current_bookings: parseInt(row[6] || "0", 10),
     speaker: row[7] || "",

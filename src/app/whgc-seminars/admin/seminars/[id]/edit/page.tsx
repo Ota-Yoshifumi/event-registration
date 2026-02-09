@@ -20,6 +20,10 @@ import { toast } from "sonner";
 import type { Seminar } from "@/lib/types";
 import { ClipboardList, FileQuestion, Copy, Link2 } from "lucide-react";
 
+const TENANT = "whgc-seminars";
+const ADMIN_BASE = "/whgc-seminars/admin";
+const PUBLIC_BASE = "/whgc-seminars";
+
 /** アンケートURL1行（表示＋コピー） */
 function SurveyUrlRow({ label, path }: { label: string; path: string }) {
   const [copied, setCopied] = useState(false);
@@ -53,25 +57,20 @@ function SurveyUrlRow({ label, path }: { label: string; path: string }) {
 function resolveImageUrl(url: string | undefined): string {
   if (!url) return "/9553.png";
 
-  // 既に uc?export=view 形式なら そのまま返す
   if (url.includes("uc?export=view") || url.includes("uc?export=download")) {
-    // download形式の場合はview形式に変換（より安定）
     return url.replace("uc?export=download", "uc?export=view");
   }
 
-  // /file/d/{id}/view 形式から変換
   const match = url.match(/\/file\/d\/([^/]+)/);
   if (match) {
     const fileId = match[1];
-    // サムネイル画像URLを使用（より軽量で高速）
     return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
   }
 
-  // マッチしない場合は汎用画像
   return "/9553.png";
 }
 
-export default function EditSeminarPage({
+export default function WhgcSeminarsEditSeminarPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -88,7 +87,7 @@ export default function EditSeminarPage({
   const [surveyPost, setSurveyPost] = useState<{ status: "loading" | "set" | "empty" | "none" | "error"; count?: number }>({ status: "loading" });
 
   useEffect(() => {
-    fetch(`/api/seminars/${id}`)
+    fetch(`/api/seminars/${id}?tenant=${TENANT}`)
       .then((res) => res.json())
       .then((data) => {
         setSeminar(data);
@@ -148,6 +147,7 @@ export default function EditSeminarPage({
       target,
       status,
       invitation_code: invitationCode.trim() || "",
+      tenant: TENANT,
     };
 
     try {
@@ -163,7 +163,7 @@ export default function EditSeminarPage({
       }
 
       toast.success("セミナーを更新しました");
-      router.push("/admin/seminars");
+      router.push(`${ADMIN_BASE}/seminars`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "更新に失敗しました");
     } finally {
@@ -171,7 +171,6 @@ export default function EditSeminarPage({
     }
   }
 
-  // 開催日・時刻をローカル時刻で分割（編集用の初期値）
   const d = seminar.date ? new Date(seminar.date) : null;
   const dateDateValue = d
     ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
@@ -212,7 +211,6 @@ export default function EditSeminarPage({
                 placeholder="改行はそのまま表示に反映されます。&lt;br&gt; でも改行できます。"
               />
 
-              {/* 画像サムネイル表示 */}
               {seminar.image_url && (
                 <div className="mt-4">
                   <Label className="text-sm text-muted-foreground">登録済み画像</Label>
@@ -233,7 +231,7 @@ export default function EditSeminarPage({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => router.push(`/admin/seminars/${id}/image`)}
+                onClick={() => router.push(`${ADMIN_BASE}/seminars/${id}/image`)}
               >
                 {seminar.image_url ? "画像を変更" : "画像登録"}
               </Button>
@@ -394,7 +392,7 @@ export default function EditSeminarPage({
                   <ClipboardList className="h-4 w-4 text-muted-foreground" />
                   アンケート設定
                 </span>
-                <Link href={`/admin/survey-questions?seminarId=${id}`}>
+                <Link href={`${ADMIN_BASE}/survey-questions?seminarId=${id}`}>
                   <Button type="button" variant="outline" size="sm">
                     設問を編集
                   </Button>
@@ -445,7 +443,7 @@ export default function EditSeminarPage({
                 </div>
               </div>
 
-              {/* 参加者用アンケートURL（管理者がメール等で参加者に送る用） */}
+              {/* 参加者用アンケートURL */}
               <div className="mt-4 pt-4 border-t border-border space-y-3">
                 <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                   <Link2 className="h-3.5 w-3.5" />
@@ -453,11 +451,11 @@ export default function EditSeminarPage({
                 </p>
                 <SurveyUrlRow
                   label="事前アンケート"
-                  path={`/seminars/${id}/pre-survey?rid=【予約ID】`}
+                  path={`${PUBLIC_BASE}/${id}/pre-survey?rid=【予約ID】`}
                 />
                 <SurveyUrlRow
                   label="事後アンケート"
-                  path={`/seminars/${id}/post-survey?rid=【予約ID】`}
+                  path={`${PUBLIC_BASE}/${id}/post-survey?rid=【予約ID】`}
                 />
                 <p className="text-xs text-muted-foreground">
                   予約IDは「予約一覧」で各予約のIDを確認し、上記の【予約ID】部分を置き換えてください。
@@ -487,7 +485,7 @@ export default function EditSeminarPage({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.push("/admin/seminars")}
+                onClick={() => router.push(`${ADMIN_BASE}/seminars`)}
               >
                 一覧に戻る
               </Button>

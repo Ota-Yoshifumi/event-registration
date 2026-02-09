@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   findMasterRowById,
+  findMasterRowByIdForTenant,
   setSheetValues,
   SURVEY_QUESTION_SHEET_HEADER,
   surveyQuestionToRow,
@@ -12,6 +13,7 @@ import {
   postSurveyQuestions,
 } from "@/lib/survey-config";
 import type { SurveyQuestion } from "@/lib/survey-config";
+import { isTenantKey } from "@/lib/tenant-config";
 
 export async function GET(
   request: NextRequest,
@@ -20,6 +22,8 @@ export async function GET(
   try {
     const { id } = await params;
     const type = request.nextUrl.searchParams.get("type");
+    const tenant = request.nextUrl.searchParams.get("tenant");
+    const tenantKey = tenant && isTenantKey(tenant) ? tenant : undefined;
 
     if (type !== "pre" && type !== "post") {
       return NextResponse.json(
@@ -28,7 +32,9 @@ export async function GET(
       );
     }
 
-    const result = await findMasterRowById(id);
+    const result = tenantKey
+      ? await findMasterRowByIdForTenant(tenantKey, id)
+      : await findMasterRowById(id);
     if (!result) {
       return NextResponse.json(
         { error: "セミナーが見つかりません" },
@@ -66,10 +72,12 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { type, questions: questionsBody } = body as {
+    const { type, questions: questionsBody, tenant } = body as {
       type: "pre" | "post";
       questions: SurveyQuestion[];
+      tenant?: string;
     };
+    const tenantKey = tenant && isTenantKey(tenant) ? tenant : undefined;
 
     if (type !== "pre" && type !== "post") {
       return NextResponse.json(
@@ -85,7 +93,9 @@ export async function PUT(
       );
     }
 
-    const result = await findMasterRowById(id);
+    const result = tenantKey
+      ? await findMasterRowByIdForTenant(tenantKey, id)
+      : await findMasterRowById(id);
     if (!result) {
       return NextResponse.json(
         { error: "セミナーが見つかりません" },

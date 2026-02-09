@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 type JwtPayload = { tenant?: string; exp?: number };
 
+const TENANT_KEYS = [
+  "whgc-seminars",
+  "kgri-pic-center",
+  "aff-events",
+  "pic-courses",
+] as const;
+
 async function verifyAndDecodeToken(
   token: string,
   secret: string
@@ -50,21 +57,25 @@ async function verifyAndDecodeToken(
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // テナント管理画面: /whgc-seminars/admin/*
-  if (pathname.startsWith("/whgc-seminars/admin")) {
-    if (pathname === "/whgc-seminars/admin/login") {
+  // テナント管理画面: /{tenant}/admin/*
+  for (const tenant of TENANT_KEYS) {
+    const adminPrefix = `/${tenant}/admin`;
+    if (pathname.startsWith(adminPrefix)) {
+      // ログインページはスルー
+      if (pathname === `${adminPrefix}/login`) {
+        return NextResponse.next();
+      }
+      const token = request.cookies.get("admin_token")?.value;
+      const secret = process.env.ADMIN_JWT_SECRET;
+      if (!token || !secret) {
+        return NextResponse.redirect(new URL(`${adminPrefix}/login`, request.url));
+      }
+      const { valid, payload } = await verifyAndDecodeToken(token, secret);
+      if (!valid || payload?.tenant !== tenant) {
+        return NextResponse.redirect(new URL(`${adminPrefix}/login`, request.url));
+      }
       return NextResponse.next();
     }
-    const token = request.cookies.get("admin_token")?.value;
-    const secret = process.env.ADMIN_JWT_SECRET;
-    if (!token || !secret) {
-      return NextResponse.redirect(new URL("/whgc-seminars/admin/login", request.url));
-    }
-    const { valid, payload } = await verifyAndDecodeToken(token, secret);
-    if (!valid || payload?.tenant !== "whgc-seminars") {
-      return NextResponse.redirect(new URL("/whgc-seminars/admin/login", request.url));
-    }
-    return NextResponse.next();
   }
 
   // 共通管理画面: /admin/*
@@ -88,5 +99,11 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/whgc-seminars/admin/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/whgc-seminars/admin/:path*",
+    "/kgri-pic-center/admin/:path*",
+    "/aff-events/admin/:path*",
+    "/pic-courses/admin/:path*",
+  ],
 };

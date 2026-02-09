@@ -201,8 +201,8 @@ export default function ManagePage({
                 <span>{formatDate(seminar.date)}</span>
               </div>
               <div className="flex justify-between">
-                <span>所要時間</span>
-                <span>{seminar.duration_minutes}分</span>
+                <span>終了時刻</span>
+                <span>{seminar.end_time || ""}</span>
               </div>
               <div className="flex justify-between">
                 <span>登壇者</span>
