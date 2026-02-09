@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { findMasterRowById, findRowById, appendRow, updateCell } from "@/lib/google/sheets";
+import { findMasterRowById, findMasterRowByIdForTenant, findRowById, appendRow, updateCell } from "@/lib/google/sheets";
+import { isTenantKey } from "@/lib/tenant-config";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { reservation_id, seminar_id, answers } = body;
+    const { reservation_id, seminar_id, answers, tenant } = body;
+    const tenantKey = tenant && isTenantKey(tenant) ? tenant : undefined;
 
     if (!reservation_id || !seminar_id || !answers) {
       return NextResponse.json({ error: "必須項目が不足しています" }, { status: 400 });
     }
 
     // マスターからセミナー情報取得 → spreadsheet_id を得る
-    const seminarResult = await findMasterRowById(seminar_id);
+    const seminarResult = tenantKey
+      ? await findMasterRowByIdForTenant(tenantKey, seminar_id)
+      : await findMasterRowById(seminar_id);
     if (!seminarResult) {
       return NextResponse.json({ error: "セミナーが見つかりません" }, { status: 404 });
     }

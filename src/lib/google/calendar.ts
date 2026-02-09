@@ -25,26 +25,26 @@ function toJSTDateTime(localDateTime: string): string {
   return `${base}+09:00`;
 }
 
-function addMinutes(dtString: string, minutes: number): string {
-  // "+09:00" オフセット付き文字列から分を加算して同じオフセットで返す
-  const base = dtString.replace(/[+-]\d{2}:\d{2}$/, "");
-  const d = new Date(base + "Z"); // UTC として一時的にパース
-  d.setUTCMinutes(d.getUTCMinutes() + minutes);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:00+09:00`;
+/**
+ * 開始日時の JST 文字列と終了時刻 "HH:mm" から、終了日時の JST RFC 3339 文字列を生成する。
+ */
+function buildEndJST(startJST: string, endTime: string): string {
+  // startJST: "YYYY-MM-DDTHH:MM:00+09:00"
+  const datePart = startJST.slice(0, 10); // "YYYY-MM-DD"
+  return `${datePart}T${endTime}:00+09:00`;
 }
 
 export async function createCalendarEvent(
   title: string,
   startDateTime: string,
-  durationMinutes: number,
+  endTime: string,
   description?: string
 ): Promise<CalendarEventResult> {
   const token = await getAccessToken();
   const calendarId = getCalendarId();
 
   const startJST = toJSTDateTime(startDateTime);
-  const endJST = addMinutes(startJST, durationMinutes);
+  const endJST = buildEndJST(startJST, endTime);
 
   const response = await fetch(
     `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1`,
@@ -96,14 +96,14 @@ export async function updateCalendarEvent(
   eventId: string,
   title: string,
   startDateTime: string,
-  durationMinutes: number,
+  endTime: string,
   description?: string
 ): Promise<void> {
   const token = await getAccessToken();
   const calendarId = getCalendarId();
 
   const startJST = toJSTDateTime(startDateTime);
-  const endJST = addMinutes(startJST, durationMinutes);
+  const endJST = buildEndJST(startJST, endTime);
 
   const response = await fetch(
     `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`,

@@ -11,7 +11,7 @@ export interface Seminar {
   title: string;
   description: string;
   date: string; // ISO 8601
-  duration_minutes: number;
+  end_time: string; // "HH:mm" 形式の終了時刻
   capacity: number;
   current_bookings: number;
   speaker: string;

@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   findMasterRowById,
+  findMasterRowByIdForTenant,
   updateMasterRow,
+  updateMasterRowForTenant,
   uploadImageToDrive,
   findRowById,
   updateRow
 } from "@/lib/google/sheets";
+import { getTenantConfig, isTenantKey } from "@/lib/tenant-config";
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -16,13 +19,19 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const result = await findMasterRowById(id);
+    const formData = await request.formData();
+    const tenantParam = formData.get("tenant") as string | null;
+    const tenantKey = tenantParam && isTenantKey(tenantParam) ? tenantParam : undefined;
+    const tenantConfig = tenantKey ? getTenantConfig(tenantKey) : null;
+
+    const result = tenantKey
+      ? await findMasterRowByIdForTenant(tenantKey, id)
+      : await findMasterRowById(id);
 
     if (!result) {
       return NextResponse.json({ error: "セミナーが見つかりません" }, { status: 404 });
     }
 
-    const formData = await request.formData();
     const file = formData.get("image");
 
     if (!file || !(file instanceof File)) {
@@ -47,7 +56,12 @@ export async function POST(
     const fileName = `seminar_${id}_${Date.now()}.${file.name.split(".").pop()}`;
 
     console.log("[Image Upload] Uploading file:", fileName);
-    const imageUrl = await uploadImageToDrive(fileName, buffer, file.type);
+    const imageUrl = await uploadImageToDrive(
+      fileName,
+      buffer,
+      file.type,
+      tenantConfig?.driveImagesFolderId || undefined
+    );
     console.log("[Image Upload] Upload successful, URL:", imageUrl);
 
     const now = new Date().toISOString();
@@ -55,24 +69,24 @@ export async function POST(
 
     // 1. マスタースプレッドシートの P列（インデックス15）に画像URL を更新
     console.log("[Image Upload] Updating master spreadsheet...");
-    console.log("[Image Upload] Original row values length:", result.values.length);
 
     const updatedMaster = [...result.values];
     while (updatedMaster.length < 19) updatedMaster.push("");
     updatedMaster[15] = imageUrl;  // P列
     updatedMaster[17] = now;        // R列
 
-    console.log("[Image Upload] Master P列 (index 15):", updatedMaster[15]);
-    console.log("[Image Upload] Master R列 (index 17):", updatedMaster[17]);
-
-    await updateMasterRow(result.rowIndex, updatedMaster);
+    if (tenantKey) {
+      await updateMasterRowForTenant(tenantKey, result.rowIndex, updatedMaster);
+    } else {
+      await updateMasterRow(result.rowIndex, updatedMaster);
+    }
     console.log("[Image Upload] Master spreadsheet update successful");
 
     // 2. 個別イベントスプレッドシートの「イベント情報」シートも更新
     if (individualSpreadsheetId) {
       console.log("[Image Upload] Updating individual spreadsheet:", individualSpreadsheetId);
 
-        const individualResult = await findRowById(individualSpreadsheetId, "イベント情報", id);
+      const individualResult = await findRowById(individualSpreadsheetId, "イベント情報", id);
       if (individualResult) {
         const updatedIndividual = [...individualResult.values];
         while (updatedIndividual.length < 19) updatedIndividual.push("");

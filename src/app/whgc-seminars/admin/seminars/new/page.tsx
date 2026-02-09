@@ -16,7 +16,10 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
-export default function NewSeminarPage() {
+const TENANT = "whgc-seminars";
+const ADMIN_BASE = "/whgc-seminars/admin";
+
+export default function WhgcSeminarsNewSeminarPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("draft");
@@ -45,6 +48,7 @@ export default function NewSeminarPage() {
       target,
       status,
       invitation_code: invitationCode.trim() || "",
+      tenant: TENANT,
     };
 
     try {
@@ -60,7 +64,7 @@ export default function NewSeminarPage() {
       }
 
       toast.success("セミナーを作成しました");
-      router.push("/admin/seminars");
+      router.push(`${ADMIN_BASE}/seminars`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "作成に失敗しました");
     } finally {

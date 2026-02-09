@@ -185,7 +185,7 @@ export default function BookingPage({
                   <p className="text-xs text-muted-foreground">時間</p>
                   <p className="font-medium">
                     {format(date, "HH:mm", { locale: ja })} ～{" "}
-                    {seminar.duration_minutes}分
+                    {seminar.end_time || ""}
                   </p>
                 </div>
               </div>

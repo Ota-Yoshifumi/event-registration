@@ -40,10 +40,7 @@ function resolveImageUrl(url: string | undefined): string {
   return "/9553.png";
 }
 
-/** duration_minutes を「○分」で表示（例: 90分） */
-function formatDuration(minutes: number): string {
-  return `${minutes}分`;
-}
+
 
 /** 開催形式の日本語表記 */
 function formatLabel(f: string): string {
@@ -230,7 +227,7 @@ export function SeminarDetailModal({
                           <p className="text-xs text-gray-500">時間</p>
                           <p className="font-medium text-gray-900 text-sm">
                             {format(date, "HH:mm", { locale: ja })} ～{" "}
-                            {formatDuration(seminar.duration_minutes)}
+                            {seminar.end_time || ""}
                           </p>
                         </div>
                       </div>

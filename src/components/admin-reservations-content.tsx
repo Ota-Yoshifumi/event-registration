@@ -60,9 +60,7 @@ function resolveImageUrl(url: string | undefined): string {
   return "/9553.png";
 }
 
-function formatDuration(minutes: number): string {
-  return `${minutes}分`;
-}
+
 
 const formatColors: Record<string, string> = {
   online: "bg-cyan-500 text-white",
@@ -279,7 +277,7 @@ export function AdminReservationsContent({
                     <Clock className="size-4 text-primary" />
                     <span>
                       {format(date, "M月d日 (E) HH:mm", { locale: ja })} ・{" "}
-                      {formatDuration(s.duration_minutes)}
+                      ～ {s.end_time || ""}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">

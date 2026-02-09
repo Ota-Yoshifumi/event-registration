@@ -63,7 +63,7 @@ export async function PUT(
       body.title ?? current.title,
       body.description ?? current.description,
       body.date ?? current.date,
-      String(body.duration_minutes ?? current.duration_minutes),
+      body.end_time ?? current.end_time,
       String(body.capacity ?? current.capacity),
       String(current.current_bookings),
       body.speaker ?? current.speaker,
@@ -82,13 +82,13 @@ export async function PUT(
     ];
 
     // Calendar イベント更新
-    if (current.calendar_event_id && (body.date || body.title || body.duration_minutes)) {
+    if (current.calendar_event_id && (body.date || body.title || body.end_time)) {
       try {
         await updateCalendarEvent(
           current.calendar_event_id,
           body.title ?? current.title,
           body.date ?? current.date,
-          body.duration_minutes ?? current.duration_minutes,
+          body.end_time ?? current.end_time,
           body.description ?? current.description
         );
       } catch (calError) {

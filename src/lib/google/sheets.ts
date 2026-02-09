@@ -341,6 +341,16 @@ export async function updateMasterRowForTenant(
   return updateRow(config.masterSpreadsheetId, "セミナー一覧", rowIndex, values);
 }
 
+/** テナントのマスターに行を追加する。 */
+export async function appendMasterRowForTenant(
+  tenant: string,
+  values: string[]
+): Promise<void> {
+  const config = (await import("@/lib/tenant-config")).getTenantConfig(tenant);
+  if (!config) throw new Error("テナント未設定");
+  return appendRow(config.masterSpreadsheetId, "セミナー一覧", values);
+}
+
 export async function appendMasterRow(values: string[]): Promise<void> {
   return appendRow(getMasterSpreadsheetId(), "セミナー一覧", values);
 }
@@ -418,6 +428,57 @@ export async function removeMemberDomain(domain: string): Promise<void> {
     ...rows.slice(1).filter((row) => row[0]?.trim().toLowerCase() !== target),
   ];
   await setSheetValues(spreadsheetId, MEMBER_DOMAINS_SHEET_NAME, newRows);
+}
+
+// ---------------------------------------------------------------------------
+// テナント対応: 会員企業ドメイン
+// ---------------------------------------------------------------------------
+
+async function ensureMemberDomainsSheetForTenant(spreadsheetId: string): Promise<void> {
+  const titles = await getSpreadsheetSheetTitles(spreadsheetId);
+  if (titles.includes(MEMBER_DOMAINS_SHEET_NAME)) return;
+  await addSheet(spreadsheetId, MEMBER_DOMAINS_SHEET_NAME);
+  await setSheetValues(spreadsheetId, MEMBER_DOMAINS_SHEET_NAME, [
+    MEMBER_DOMAINS_HEADER,
+  ]);
+}
+
+export async function getMemberDomainsForTenant(tenant: string): Promise<string[]> {
+  const config = (await import("@/lib/tenant-config")).getTenantConfig(tenant);
+  if (!config) return [];
+  await ensureMemberDomainsSheetForTenant(config.masterSpreadsheetId);
+  const rows = await getSheetData(config.masterSpreadsheetId, MEMBER_DOMAINS_SHEET_NAME);
+  const domains: string[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const d = rows[i][0]?.trim();
+    if (d) domains.push(d);
+  }
+  return domains;
+}
+
+export async function addMemberDomainForTenant(tenant: string, domain: string): Promise<void> {
+  const config = (await import("@/lib/tenant-config")).getTenantConfig(tenant);
+  if (!config) throw new Error("テナント未設定");
+  await ensureMemberDomainsSheetForTenant(config.masterSpreadsheetId);
+  const d = domain.trim().toLowerCase();
+  if (!d) throw new Error("ドメインを入力してください");
+  await appendRow(config.masterSpreadsheetId, MEMBER_DOMAINS_SHEET_NAME, [
+    d,
+    new Date().toISOString(),
+  ]);
+}
+
+export async function removeMemberDomainForTenant(tenant: string, domain: string): Promise<void> {
+  const config = (await import("@/lib/tenant-config")).getTenantConfig(tenant);
+  if (!config) throw new Error("テナント未設定");
+  await ensureMemberDomainsSheetForTenant(config.masterSpreadsheetId);
+  const rows = await getSheetData(config.masterSpreadsheetId, MEMBER_DOMAINS_SHEET_NAME);
+  const target = domain.trim().toLowerCase();
+  const newRows = [
+    MEMBER_DOMAINS_HEADER,
+    ...rows.slice(1).filter((row) => row[0]?.trim().toLowerCase() !== target),
+  ];
+  await setSheetValues(config.masterSpreadsheetId, MEMBER_DOMAINS_SHEET_NAME, newRows);
 }
 
 // ---------------------------------------------------------------------------
@@ -773,10 +834,11 @@ export async function createTenantMasterSpreadsheet(
 export async function uploadImageToDrive(
   fileName: string,
   fileBuffer: ArrayBuffer,
-  mimeType: string
+  mimeType: string,
+  tenantImagesFolderId?: string
 ): Promise<string> {
   const token = await getAccessToken();
-  const folderId = process.env.GOOGLE_DRIVE_IMAGES_FOLDER_ID;
+  const folderId = tenantImagesFolderId || process.env.GOOGLE_DRIVE_IMAGES_FOLDER_ID;
 
   // multipart/related でメタデータとファイル本体を同時に送信
   const boundary = `boundary_${Date.now()}`;

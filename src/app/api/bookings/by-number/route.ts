@@ -3,9 +3,11 @@ import {
   findReservationByNumber,
   getSheetData,
   getMasterData,
+  getMasterDataForTenant,
 } from "@/lib/google/sheets";
 import { rowToSeminar } from "@/lib/seminars";
 import { isValidReservationNumberFormat } from "@/lib/reservation-number";
+import { isTenantKey } from "@/lib/tenant-config";
 import type { Reservation } from "@/lib/types";
 
 function rowToReservation(row: string[]): Reservation {
@@ -33,6 +35,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const number = searchParams.get("number")?.trim();
+    const tenant = searchParams.get("tenant");
+    const tenantKey = tenant && isTenantKey(tenant) ? tenant : undefined;
 
     if (!number) {
       return NextResponse.json(
@@ -56,7 +60,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const masterRows = await getMasterData();
+    const masterRows = tenantKey
+      ? await getMasterDataForTenant(tenantKey)
+      : await getMasterData();
+    if (!masterRows) {
+      return NextResponse.json(
+        { error: "予約番号が見つかりません" },
+        { status: 404 }
+      );
+    }
     const seminarRow = masterRows.slice(1).find(
       (r) => (r[11] || "").trim() === index.spreadsheet_id
     );

@@ -91,12 +91,12 @@ export default function ConfirmationPage({
             </div>
           </div>
 
-          {/* 所要時間 */}
+          {/* 終了時刻 */}
           <div className="flex items-center gap-3">
             <Clock className="w-5 h-5 text-pink-500" />
             <div>
-              <p className="text-xs text-muted-foreground">所要時間</p>
-              <p className="font-medium">{seminar.duration_minutes}分</p>
+              <p className="text-xs text-muted-foreground">終了時刻</p>
+              <p className="font-medium">{seminar.end_time || ""}</p>
             </div>
           </div>
 

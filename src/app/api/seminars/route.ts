@@ -4,12 +4,14 @@ import {
   getMasterData,
   getMasterDataForTenant,
   appendMasterRow,
+  appendMasterRowForTenant,
   createSeminarSpreadsheet,
   appendRow,
 } from "@/lib/google/sheets";
 import { createCalendarEvent } from "@/lib/google/calendar";
 import { rowToSeminar } from "@/lib/seminars";
 import { getSurveyQuestions } from "@/lib/survey/storage";
+import { isTenantKey } from "@/lib/tenant-config";
 
 export async function GET(request: NextRequest) {
   try {
@@ -69,7 +71,7 @@ export async function POST(request: NextRequest) {
       title,
       description,
       date,
-      duration_minutes,
+      end_time,
       capacity,
       speaker,
       speaker_title,
@@ -78,7 +80,9 @@ export async function POST(request: NextRequest) {
       target,
       status,
       invitation_code,
+      tenant,
     } = body;
+    const tenantKey = tenant && isTenantKey(tenant) ? tenant : undefined;
 
     if (!title || !date || !speaker) {
       return NextResponse.json(
@@ -86,14 +90,14 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const duration = Number(duration_minutes) || 60;
+    const endTimeVal = (end_time || "").toString().trim();
     const cap = Number(capacity) || 100;
 
     // 1. Google Calendar イベント作成 + Meet URL 生成
     let meetUrl = "";
     let calendarEventId = "";
     try {
-      const calEvent = await createCalendarEvent(title, date, duration, description);
+      const calEvent = await createCalendarEvent(title, date, endTimeVal, description);
       meetUrl = calEvent.meetUrl;
       calendarEventId = calEvent.eventId;
     } catch (calError) {
@@ -126,7 +130,7 @@ export async function POST(request: NextRequest) {
         title,
         description || "",
         date,
-        String(duration),
+        endTimeVal,
         String(cap),
         "0",
         speaker || "",
@@ -153,7 +157,7 @@ export async function POST(request: NextRequest) {
       title,
       description || "",
       date,
-      String(duration),
+      endTimeVal,
       String(cap),
       "0",
       speaker || "",
@@ -171,7 +175,11 @@ export async function POST(request: NextRequest) {
       speaker_reference_url || "",
     ];
 
-    await appendMasterRow(masterRow);
+    if (tenantKey) {
+      await appendMasterRowForTenant(tenantKey, masterRow);
+    } else {
+      await appendMasterRow(masterRow);
+    }
 
     return NextResponse.json(rowToSeminar(masterRow), { status: 201 });
   } catch (error) {
