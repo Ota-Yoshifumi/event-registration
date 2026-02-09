@@ -25,8 +25,8 @@ export function AdminSidebar({
   const pathname = usePathname();
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar font-sans">
-      <div className="p-4 pb-2">
+    <aside className="admin-sidebar flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar font-sans">
+      <div className="px-5 py-5 pb-3">
         <Link
           href={basePath}
           className="text-lg font-bold tracking-tight text-sidebar-foreground"
@@ -34,7 +34,7 @@ export function AdminSidebar({
           管理画面
         </Link>
       </div>
-      <nav className="flex-1 space-y-1 px-2 pb-4">
+      <nav className="flex-1 space-y-0.5 px-3 pb-4">
         {navItems.map((item) => {
           const href = `${basePath}${item.path}`;
           const isActive =
@@ -46,22 +46,22 @@ export function AdminSidebar({
               key={href}
               href={href}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[0.875rem] font-medium transition-colors",
                 isActive
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
                   : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               )}
             >
-              <span>{item.icon}</span>
+              <span className="text-base">{item.icon}</span>
               {item.label}
             </Link>
           );
         })}
       </nav>
-      <div className="border-t border-sidebar-border p-4 pt-4">
+      <div className="border-t border-sidebar-border px-5 py-4">
         <Link
           href={publicPath}
-          className="text-sm text-sidebar-foreground/80 hover:text-sidebar-foreground"
+          className="text-[0.8125rem] text-sidebar-foreground/80 hover:text-sidebar-foreground transition-colors"
         >
           公開サイトへ →
         </Link>

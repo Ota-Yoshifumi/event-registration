@@ -97,12 +97,12 @@ export default function AdminMemberDomainsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">
           会員企業ドメイン
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="admin-description mt-2">
           メールアドレスの@より後ろのドメインで会員企業を判定します。後方一致のため、親ドメイン（例: duskin.co.jp）を登録すれば、サブドメイン（mail.duskin.co.jp など）のメールも会員として扱われます。
         </p>
       </div>

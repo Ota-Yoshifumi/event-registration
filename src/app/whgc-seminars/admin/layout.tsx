@@ -11,7 +11,7 @@ export default function WhgcSeminarsAdminLayout({
         basePath="/whgc-seminars/admin"
         publicPath="/whgc-seminars"
       />
-      <main className="flex-1 overflow-auto bg-background p-6 font-sans text-foreground">
+      <main className="admin-main flex-1 overflow-auto bg-background font-sans text-foreground">
         {children}
       </main>
     </div>

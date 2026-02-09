@@ -186,25 +186,25 @@ export function AdminReservationsContent({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             予約一覧
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="admin-description mt-2">
             セミナーの作成・編集・公開、予約確認、アンケートの作成ができます。
           </p>
         </div>
         <Link href={`${adminBase}/seminars/new`} className="shrink-0">
-          <Button>
-            <Plus className="size-4" />
+          <Button size="lg" className="gap-2 px-6 shadow-sm">
+            <Plus className="size-5" />
             新規作成
           </Button>
         </Link>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="admin-seminar-grid">
         {seminars.map((s) => {
           const hasPre = s.has_pre_survey ?? false;
           const hasPost = s.has_post_survey ?? false;
@@ -213,7 +213,7 @@ export function AdminReservationsContent({
           return (
             <Card
               key={s.id}
-              className={`group flex h-full flex-col overflow-hidden border border-border shadow-sm transition-shadow hover:shadow-md ${
+              className={`admin-card group flex h-full flex-col overflow-hidden ${
                 s.status === "cancelled" ? "bg-muted" : "bg-card"
               }`}
             >
@@ -265,23 +265,22 @@ export function AdminReservationsContent({
               </div>
 
               <CardContent className="flex flex-1 flex-col p-5">
-                <h3 className="mb-2 line-clamp-2 text-lg font-bold text-foreground">
+                <h3 className="mb-2 line-clamp-2 text-base font-bold leading-snug text-foreground">
                   {s.title}
                 </h3>
-                <p className="mb-4 line-clamp-2 text-sm text-muted-foreground">
+                <p className="mb-4 line-clamp-2 text-[0.8125rem] leading-relaxed text-muted-foreground">
                   {s.description || "—"}
                 </p>
 
-                <div className="mb-4 space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="size-4 text-primary" />
+                <div className="mb-4 space-y-2.5">
+                  <div className="flex items-center gap-2 text-[0.8125rem] text-muted-foreground">
+                    <Clock className="size-4 shrink-0 text-primary" />
                     <span>
-                      {format(date, "M月d日 (E) HH:mm", { locale: ja })} ・{" "}
-                      ～ {s.end_time || ""}
+                      {format(date, "M月d日 (E) HH:mm", { locale: ja })} ～ {s.end_time || ""}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="size-4 text-pink-500" />
+                  <div className="flex items-center gap-2 text-[0.8125rem] text-muted-foreground">
+                    <MapPin className="size-4 shrink-0 text-pink-500" />
                     <span className="truncate">
                       {s.format === "online"
                         ? "オンライン開催"
@@ -290,14 +289,14 @@ export function AdminReservationsContent({
                           : "会場開催"}
                     </span>
                   </div>
-                  <div className="flex items-start gap-2 text-sm text-foreground">
+                  <div className="flex items-start gap-2 text-[0.8125rem] text-foreground">
                     <Users className="mt-0.5 size-4 shrink-0 text-cyan-500" />
                     <div className="min-w-0">
                       <div>
                         登壇者： <span className="font-bold">{s.speaker}</span> 氏
                       </div>
                       {s.speaker_title && (
-                        <div className="mt-0.5 text-foreground">
+                        <div className="mt-0.5 text-muted-foreground">
                           {s.speaker_title}
                         </div>
                       )}
@@ -334,17 +333,17 @@ export function AdminReservationsContent({
                 </div>
 
                 <div className="mt-auto flex items-center justify-between border-t border-border pt-4">
-                  <div className="text-sm text-muted-foreground">
-                    <span className="font-medium">
-                      {s.current_bookings}/{s.capacity}人
-                    </span>{" "}
-                    参加予定
+                  <div className="text-[0.8125rem] text-muted-foreground">
+                    <span className="font-semibold text-foreground">
+                      {s.current_bookings}/{s.capacity}
+                    </span>
+                    人 参加予定
                   </div>
                   <Button
                     type="button"
                     size="sm"
                     variant={selectedSeminarId === s.id ? "default" : "outline"}
-                    className="rounded-full"
+                    className="rounded-full px-4 py-2 text-[0.8125rem]"
                     onClick={() =>
                       setSelectedSeminarId(selectedSeminarId === s.id ? null : s.id)
                     }
@@ -355,33 +354,31 @@ export function AdminReservationsContent({
                 </div>
               </CardContent>
 
-              <CardFooter className="flex flex-col gap-3 border-t border-border pt-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  {hasSheet && (
-                    <>
-                      <Button type="button" variant="outline" size="sm" asChild>
-                        <Link
-                          href={`${adminBase}/survey-questions?seminarId=${s.id}&type=pre`}
-                        >
-                          <FileEdit className="size-4" />
-                          事前アンケート
-                        </Link>
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" asChild>
-                        <Link
-                          href={`${adminBase}/survey-questions?seminarId=${s.id}&type=post`}
-                        >
-                          <FileEdit className="size-4" />
-                          事後アンケート
-                        </Link>
-                      </Button>
-                    </>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
-                  <Button variant="outline" size="sm" asChild>
+              <CardFooter className="flex flex-col gap-3 border-t border-border px-5 pb-5 pt-4">
+                {hasSheet && (
+                  <div className="admin-card-footer w-full">
+                    <Button type="button" variant="outline" size="sm" className="gap-1.5 text-[0.8125rem]" asChild>
+                      <Link
+                        href={`${adminBase}/survey-questions?seminarId=${s.id}&type=pre`}
+                      >
+                        <FileEdit className="size-3.5" />
+                        事前アンケート
+                      </Link>
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" className="gap-1.5 text-[0.8125rem]" asChild>
+                      <Link
+                        href={`${adminBase}/survey-questions?seminarId=${s.id}&type=post`}
+                      >
+                        <FileEdit className="size-3.5" />
+                        事後アンケート
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+                <div className="admin-card-footer w-full border-t border-border pt-3">
+                  <Button variant="outline" size="sm" className="gap-1.5 text-[0.8125rem]" asChild>
                     <Link href={`${adminBase}/seminars/${s.id}/edit`}>
-                      <Pencil className="size-4" />
+                      <Pencil className="size-3.5" />
                       編集
                     </Link>
                   </Button>
@@ -394,7 +391,7 @@ export function AdminReservationsContent({
                         }
                         disabled={updatingStatusId === s.id}
                       >
-                        <SelectTrigger size="sm" className="w-[120px]">
+                        <SelectTrigger size="sm" className="w-[120px] text-[0.8125rem]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -403,7 +400,7 @@ export function AdminReservationsContent({
                         </SelectContent>
                       </Select>
                     ) : (
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-[0.8125rem] text-muted-foreground">
                         {statusLabel[s.status] ?? s.status}
                       </span>
                     ))}
@@ -413,8 +410,8 @@ export function AdminReservationsContent({
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <Button variant="outline" size="sm">
-                        <ExternalLink className="size-4" />
+                      <Button variant="outline" size="sm" className="gap-1.5 text-[0.8125rem]">
+                        <ExternalLink className="size-3.5" />
                         スプシ
                       </Button>
                     </a>
@@ -424,10 +421,11 @@ export function AdminReservationsContent({
                     <Button
                       variant="destructive"
                       size="sm"
+                      className="gap-1.5 text-[0.8125rem]"
                       onClick={() => handleCancel(s.id)}
                       disabled={cancellingId === s.id}
                     >
-                      <Ban className="size-4" />
+                      <Ban className="size-3.5" />
                       {cancellingId === s.id ? "処理中..." : "キャンセル"}
                     </Button>
                   )}
@@ -443,10 +441,10 @@ export function AdminReservationsContent({
       )}
 
       {selectedSeminarId && (
-        <Card className="shadow-sm">
-          <CardHeader>
+        <Card className="admin-card overflow-hidden">
+          <CardHeader className="pb-3">
             <CardTitle className="text-lg font-semibold">予約詳細</CardTitle>
-            <CardDescription>
+            <CardDescription className="text-[0.8125rem]">
               {seminars.find((s) => s.id === selectedSeminarId)?.title}
             </CardDescription>
           </CardHeader>
