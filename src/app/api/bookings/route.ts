@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     // 会員限定セミナー: 会員企業ドメイン or 招待コードで受付
     if (seminar.target === "members_only") {
-      const isMember = await isMemberDomainEmail(email);
+      const isMember = await isMemberDomainEmail(email, tenantKey);
       if (!isMember) {
         const code = (invitation_code || "").trim();
         const expected = (seminar.invitation_code || "").trim().toLowerCase();

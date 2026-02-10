@@ -1,4 +1,4 @@
-import { getMemberDomains } from "@/lib/google/sheets";
+import { getMemberDomains, getMemberDomainsForTenant } from "@/lib/google/sheets";
 
 /**
  * メールアドレスからドメイン部分（@ より後ろ）を取得する。
@@ -25,11 +25,19 @@ function domainMatchesAllowed(emailDomain: string, allowedDomain: string): boole
  * 登録済み会員企業ドメイン一覧を取得し、指定メールアドレスのドメインが
  * 後方一致でいずれかに該当するかを返す。会員企業のメール（@ より後ろ）で判定する。
  * 例: 登録に duskin.co.jp があれば、xxx@mail.duskin.co.jp も会員と判定される。
+ *
+ * tenant を指定すると、そのテナントのマスタースプレッドシートから
+ * 会員ドメイン一覧を参照する。
  */
-export async function isMemberDomainEmail(email: string): Promise<boolean> {
+export async function isMemberDomainEmail(
+  email: string,
+  tenant?: string
+): Promise<boolean> {
   const domain = getDomainFromEmail(email);
   if (!domain) return false;
-  const allowed = await getMemberDomains();
+  const allowed = tenant
+    ? await getMemberDomainsForTenant(tenant)
+    : await getMemberDomains();
   return allowed.some((d) => {
     const a = d.trim().toLowerCase();
     return a && domainMatchesAllowed(domain, a);
