@@ -28,7 +28,6 @@ import type { Seminar } from "@/lib/types";
 import { normalizeLineBreaks } from "@/lib/utils";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
-import { toast } from "sonner";
 
 interface SeminarDetailModalProps {
   seminar: Seminar | null;
@@ -78,6 +77,11 @@ export function SeminarDetailModal({
   const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<ModalView>("detail");
 
+  // basePath からテナントキーを抽出（例: "/whgc-seminars" → "whgc-seminars"）
+  // "/seminars" の場合は undefined（デフォルトテナント）
+  const tenantKey =
+    basePath !== "/seminars" ? basePath.replace(/^\//, "") : undefined;
+
   // Booking form state
   const [formData, setFormData] = useState({
     name: "",
@@ -90,6 +94,7 @@ export function SeminarDetailModal({
   const [invitationCode, setInvitationCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [showMemberOnlyModal, setShowMemberOnlyModal] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Confirmation state
   const [reservationNumber, setReservationNumber] = useState<string | null>(
@@ -115,6 +120,7 @@ export function SeminarDetailModal({
       setEmailConfirm("");
       setInvitationCode("");
       setReservationNumber(null);
+      setFormError(null);
     }
   }, [seminarId]);
 
@@ -136,21 +142,22 @@ export function SeminarDetailModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!seminar) return;
+    setFormError(null);
 
     if (!formData.name || !formData.email || !formData.company) {
-      toast.error("お名前、メールアドレス、会社名は必須です");
+      setFormError("お名前、メールアドレス、会社名は必須です");
       return;
     }
 
     const email = formData.email.trim();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
     if (!emailRegex.test(email)) {
-      toast.error("有効なメールアドレスを入力してください");
+      setFormError("有効なメールアドレスを入力してください");
       return;
     }
 
     if (email !== emailConfirm.trim()) {
-      toast.error("メールアドレスが一致しません。もう一度ご確認ください。");
+      setFormError("メールアドレスが一致しません。もう一度ご確認ください。");
       return;
     }
 
@@ -165,6 +172,7 @@ export function SeminarDetailModal({
           ...formData,
           email: formData.email.trim(),
           invitation_code: invitationCode.trim() || undefined,
+          ...(tenantKey ? { tenant: tenantKey } : {}),
         }),
       });
 
@@ -180,16 +188,11 @@ export function SeminarDetailModal({
 
       const booking = await res.json();
 
-      toast.success(
-        booking.already_registered
-          ? "登録済みです。確認メールを再送しました。"
-          : "予約が完了しました！"
-      );
-
+      setFormError(null);
       setReservationNumber(booking.reservation_number || booking.id);
       setView("confirmation");
     } catch (error) {
-      toast.error(
+      setFormError(
         error instanceof Error ? error.message : "予約に失敗しました"
       );
     } finally {
@@ -557,6 +560,13 @@ export function SeminarDetailModal({
                     キャンセルする場合は、確認メールに記載されているリンクからお手続きください。
                   </p>
                 </div>
+
+                {/* インラインエラー表示 */}
+                {formError && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {formError}
+                  </div>
+                )}
 
                 <div className="flex flex-col items-center pt-4">
                   <Button
