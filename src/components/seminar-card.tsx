@@ -75,24 +75,24 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
             />
           </div>
 
-          {/* コンテンツ（block-stack-tight でブロック間隔を統一） */}
+          {/* コンテンツ（block-stack-tight + global.css の行間: line-height 1.5〜1.6） */}
           <CardContent className="p-5 flex flex-col flex-1 block-stack-tight">
-            <h3 className="line-clamp-2 whitespace-pre-line text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+            <h3 className="line-clamp-2 whitespace-pre-line text-lg font-bold leading-relaxed text-foreground group-hover:text-primary transition-colors">
               {normalizeLineBreaks(seminar.title)}
             </h3>
 
-            <p className="line-clamp-2 whitespace-pre-line text-sm text-muted-foreground">
+            <p className="line-clamp-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
               {normalizeLineBreaks(seminar.description)}
             </p>
 
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm font-bold leading-relaxed text-foreground">
                 <Clock className="w-4 h-4 shrink-0 text-primary" />
                 <span>
                   {format(date, "M月d日(E)HH:mm", { locale: ja })}〜{seminar.end_time || ""}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-foreground">
+              <div className="flex items-center gap-2 text-sm leading-relaxed text-foreground">
                 <MapPin className="w-4 h-4 shrink-0 text-pink-500" />
                 <span className="truncate">
                   {seminar.format === "online"
@@ -102,9 +102,9 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
                       : "会場開催"}
                 </span>
               </div>
-              <div className="flex items-start gap-2 text-sm text-foreground">
+              <div className="flex items-start gap-2 text-sm leading-relaxed text-foreground">
                 <Users className="mt-0.5 w-4 shrink-0 text-cyan-500" />
-                <div>
+                <div className="min-w-0">
                   <div>
                     登壇者： <span className="font-bold">{seminar.speaker}</span> 氏
                   </div>
@@ -128,7 +128,7 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
 
             {/* フッター */}
             <div className="mt-auto flex items-center justify-between border-t border-border pt-4 flex-shrink-0">
-              <div className="text-sm text-foreground">
+              <div className="text-sm leading-relaxed text-foreground">
                 定員 <span className="font-medium">{seminar.capacity}名</span>
               </div>
               <Button

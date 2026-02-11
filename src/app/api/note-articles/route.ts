@@ -47,16 +47,8 @@ export async function GET(req: Request) {
       const pubDate = extractTag(block, "pubDate");
       const creator = extractTag(block, "note:creatorName");
 
-      // 画像URL: media:thumbnail → description/content 内の最初の img src（note.com は thumbnail がない場合あり）
-      let image = "";
-      const thumbMatch = block.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/);
-      if (thumbMatch?.[1]) {
-        image = thumbMatch[1];
-      } else {
-        const description = extractTag(block, "description") || extractTag(block, "content:encoded") || "";
-        const imgMatch = description.match(/<img[^>]+src=["']([^"']+)["']/i);
-        if (imgMatch?.[1]) image = imgMatch[1];
-      }
+      // 画像URL: media:thumbnail（複数パターン）→ description/content 内の img src（HTMLエンティティ解釈）
+      let image = extractNoteImageUrl(block);
 
       if (title && url) {
         items.push({ title, url, image, pubDate, creator });
@@ -81,4 +73,42 @@ function extractTag(xml: string, tag: string): string {
   const re = new RegExp(`<${escaped}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?</${escaped}>`);
   const m = xml.match(re);
   return m ? m[1].trim() : "";
+}
+
+/** HTML エンティティをデコード（img src 抽出用） */
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"');
+}
+
+/**
+ * note.com RSS の item ブロックから画像 URL を取得する。
+ * サンプル形式: https://assets.st-note.com/production/uploads/images/...?width=600
+ */
+function extractNoteImageUrl(block: string): string {
+  // 1) media:thumbnail の url 属性（属性順不同に対応）
+  const thumbMatch = block.match(/<media:thumbnail[^>]*url=["']([^"']+)["']/i);
+  if (thumbMatch?.[1]?.startsWith("http")) return thumbMatch[1];
+
+  // 2) その他 thumbnail 系タグ（名前空間違いなど）
+  const anyThumb = block.match(/<[^>]*thumbnail[^>]*url=["']([^"']+)["']/i);
+  if (anyThumb?.[1]?.startsWith("http")) return anyThumb[1];
+
+  const rawDesc =
+    extractTag(block, "description") || extractTag(block, "content:encoded") || "";
+  const desc = decodeHtmlEntities(rawDesc);
+
+  // 3) og:image（note の description に meta が含まれる場合）
+  const ogMatch = desc.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+    || desc.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+  if (ogMatch?.[1]?.startsWith("http")) return ogMatch[1];
+
+  // 4) description 内の最初の img src（CDATA やエスケープあり）
+  const imgMatch = desc.match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (imgMatch?.[1]?.startsWith("http")) return imgMatch[1];
+
+  return "";
 }

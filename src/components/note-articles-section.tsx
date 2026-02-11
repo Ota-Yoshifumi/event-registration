@@ -107,10 +107,22 @@ export function NoteArticlesSection() {
                     alt={article.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     loading="lazy"
+                    referrerPolicy="no-referrer"
                     onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                      const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                      if (fallback) fallback.classList.remove("hidden");
+                      const el = e.currentTarget;
+                      // プロキシ失敗時は元URLを直接試す（Referer でブロックされない場合のみ表示）
+                      if (el.src.includes("/api/note-articles/image")) {
+                        el.src = article.image;
+                        el.onerror = () => {
+                          el.style.display = "none";
+                          const fallback = el.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.classList.remove("hidden");
+                        };
+                      } else {
+                        el.style.display = "none";
+                        const fallback = el.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.classList.remove("hidden");
+                      }
                     }}
                   />
                 ) : null}

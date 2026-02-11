@@ -10,6 +10,7 @@ import Link from "next/link";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -371,13 +372,15 @@ export default function BookingPage({
 
       {/* 会員限定アラートモーダル（403時） */}
       <Dialog open={showMemberOnlyModal} onOpenChange={setShowMemberOnlyModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" aria-describedby="member-only-booking-desc">
           <DialogHeader>
             <DialogTitle>このセミナーは会員限定のものとなります</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            会員企業のメールアドレスでお申し込みいただくか、招待コードをお持ちの場合は入力のうえお申し込みください。
-          </p>
+          <DialogDescription id="member-only-booking-desc" asChild>
+            <p className="text-sm text-muted-foreground">
+              会員企業のメールアドレスでお申し込みいただくか、招待コードをお持ちの場合は入力のうえお申し込みください。
+            </p>
+          </DialogDescription>
           <DialogFooter>
             <Button
               onClick={() => {

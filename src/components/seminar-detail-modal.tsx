@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -602,17 +603,19 @@ export function SeminarDetailModal({
         </div>
       </section>
 
-      {/* 会員限定アラートモーダル */}
+      {/* 会員限定アラートモーダル（403 時に表示・反応がなく見える問題を解消） */}
       <Dialog open={showMemberOnlyModal} onOpenChange={setShowMemberOnlyModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" aria-describedby="member-only-dialog-desc">
           <DialogHeader>
             <DialogTitle>
               このセミナーは会員限定のものとなります
             </DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            会員企業のメールアドレスでお申し込みいただくか、招待コードをお持ちの場合は入力のうえお申し込みください。
-          </p>
+          <DialogDescription id="member-only-dialog-desc" asChild>
+            <p className="text-sm text-muted-foreground">
+              会員企業のメールアドレスでお申し込みいただくか、招待コードをお持ちの場合は入力のうえお申し込みください。
+            </p>
+          </DialogDescription>
           <DialogFooter>
             <Button onClick={() => setShowMemberOnlyModal(false)}>
               閉じる
