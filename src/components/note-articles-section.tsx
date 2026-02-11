@@ -33,12 +33,6 @@ function formatRelativeDate(dateStr: string): string {
 
 const NOTE_USER = "whgc_official";
 
-/** 外部画像をプロキシ経由で表示（Referer 制限・混在コンテンツ対策） */
-function noteImageSrc(imageUrl: string): string {
-  if (!imageUrl) return "";
-  return `/api/note-articles/image?url=${encodeURIComponent(imageUrl)}`;
-}
-
 export function NoteArticlesSection() {
   const [articles, setArticles] = useState<NoteArticle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,39 +93,22 @@ export function NoteArticlesSection() {
               rel="noopener noreferrer"
               className="group block rounded-2xl overflow-hidden bg-card border border-border hover:shadow-xl transition-all duration-300"
             >
-              {/* サムネイル（プロキシ経由で読み込み） */}
+              {/* サムネイル */}
               <div className="relative aspect-[16/9] overflow-hidden bg-muted">
-                {article.image ? (
+                {article.image && (
                   <img
-                    src={noteImageSrc(article.image)}
+                    src={article.image}
                     alt={article.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     loading="lazy"
                     referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const el = e.currentTarget;
-                      // プロキシ失敗時は元URLを直接試す（Referer でブロックされない場合のみ表示）
-                      if (el.src.includes("/api/note-articles/image")) {
-                        el.src = article.image;
-                        el.onerror = () => {
-                          el.style.display = "none";
-                          const fallback = el.nextElementSibling as HTMLElement;
-                          if (fallback) fallback.classList.remove("hidden");
-                        };
-                      } else {
-                        el.style.display = "none";
-                        const fallback = el.nextElementSibling as HTMLElement;
-                        if (fallback) fallback.classList.remove("hidden");
-                      }
-                    }}
                   />
-                ) : null}
-                <div
-                  className={`w-full h-full flex items-center justify-center text-muted-foreground ${article.image ? "hidden" : ""}`}
-                  aria-hidden
-                >
-                  <Newspaper className="w-10 h-10" />
-                </div>
+                )}
+                {!article.image && (
+                  <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+                    <Newspaper className="w-10 h-10" />
+                  </div>
+                )}
               </div>
 
               {/* テキスト（global.css の block-stack-tight / フォント規定に合わせる） */}

@@ -63,8 +63,8 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
         className="cursor-pointer h-full"
       >
         <Card className="group overflow-hidden hover:shadow-2xl transition-all duration-300 border border-border bg-card flex flex-col h-full">
-          {/* 画像エリア（16:9。画像は天地に合わせて表示、左右余白は白） */}
-          <div className="relative flex w-full items-center justify-center overflow-hidden bg-white aspect-[16/9]">
+          {/* 画像エリア（16:9、天地合わせ・左右余白白） */}
+          <div className="relative flex w-full items-center justify-center overflow-hidden aspect-[16/9] bg-white">
             <img
               src={resolveImageUrl(seminar.image_url)}
               alt={seminar.title}

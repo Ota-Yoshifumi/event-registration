@@ -18,14 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import type { Seminar } from "@/lib/types";
 import { TENANT_KEYS } from "@/lib/tenant-config";
 import { normalizeLineBreaks } from "@/lib/utils";
@@ -103,7 +95,6 @@ export function SeminarDetailModal({
   const [emailConfirm, setEmailConfirm] = useState("");
   const [invitationCode, setInvitationCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showMemberOnlyModal, setShowMemberOnlyModal] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Confirmation state
@@ -187,11 +178,6 @@ export function SeminarDetailModal({
         }),
       });
 
-      if (res.status === 403) {
-        setShowMemberOnlyModal(true);
-        return;
-      }
-
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "予約に失敗しました");
@@ -219,11 +205,11 @@ export function SeminarDetailModal({
         className="flex flex-shrink-0 flex-col mb-12 lg:mb-8"
         aria-label="ヒーロー"
       >
-        <div className="relative w-full overflow-hidden bg-neutral-800 aspect-[16/9]">
+        <div className="relative flex w-full items-center justify-center overflow-hidden aspect-[16/9] bg-white">
           <img
             src={resolveImageUrl(seminar.image_url)}
             alt={seminar.title}
-            className="h-full w-full object-cover"
+            className="max-h-full max-w-full object-contain"
             onError={(e) => {
               (e.target as HTMLImageElement).src = "/9553.png";
             }}
@@ -606,24 +592,6 @@ export function SeminarDetailModal({
         </div>
       </section>
 
-      {/* 会員限定アラートモーダル（403 時に表示・反応がなく見える問題を解消） */}
-      <Dialog open={showMemberOnlyModal} onOpenChange={setShowMemberOnlyModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              このセミナーは会員限定のものとなります
-            </DialogTitle>
-            <DialogDescription>
-              会員企業のメールアドレスでお申し込みいただくか、招待コードをお持ちの場合は入力のうえお申し込みください。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => setShowMemberOnlyModal(false)}>
-              閉じる
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 
