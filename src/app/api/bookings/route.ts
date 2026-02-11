@@ -73,8 +73,11 @@ export async function POST(request: NextRequest) {
         const code = (invitation_code || "").trim();
         const expected = (seminar.invitation_code || "").trim().toLowerCase();
         if (!expected || code.toLowerCase() !== expected) {
+          const message = code
+            ? "招待コードが正しくありません"
+            : "会員企業のメールアドレス、または招待コードが必要です";
           return NextResponse.json(
-            { error: "このセミナーは会員限定です。会員企業のメールアドレスでお申し込みください。" },
+            { error: message },
             { status: 403 }
           );
         }
