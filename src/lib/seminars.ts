@@ -2,39 +2,43 @@ import { getMasterData, findMasterRowById, getSheetData } from "@/lib/google/she
 import { getTenantConfig } from "@/lib/tenant-config";
 import type { Seminar } from "@/lib/types";
 
-// マスタースプレッドシート「セミナー一覧」シートの列順:
-// 新レイアウト(20列): ... O:対象 P:招待コード Q:画像URL R:created_at S:updated_at T:参考URL
+// マスタースプレッドシート「セミナー一覧」シートの列順 (20列固定):
+// A:ID  B:title  C:description  D:date  E:end_time  F:capacity  G:current_bookings
+// H:speaker  I:meet_url  J:calendar_event_id  K:status  L:spreadsheet_id
+// M:speaker_title  N:format  O:target  P:invitation_code  Q:image_url
+// R:created_at  S:updated_at  T:speaker_reference_url
 
 /**
  * シートの1行を Seminar オブジェクトに変換する。
- * row.length >= 20 のとき招待コード列(P)あり。それ未満は従来レイアウト。
+ * Google Sheets は末尾の空セルを省略して返す場合があるため、
+ * 安全に参照できるよう 20 列までパディングする。
  */
 export function rowToSeminar(row: string[]): Seminar {
-  const formatVal = row[13];
-  const isNewLayout =
-    formatVal === "venue" || formatVal === "online" || formatVal === "hybrid";
-  const hasInvitationCode = isNewLayout && row.length >= 20;
+  // 20列未満の場合は空文字で埋める（Google Sheets が末尾空セルを省略する対策）
+  const r = [...row];
+  while (r.length < 20) r.push("");
+
   return {
-    id: row[0] || "",
-    title: row[1] || "",
-    description: row[2] || "",
-    date: row[3] || "",
-    end_time: row[4] || "",
-    capacity: parseInt(row[5] || "0", 10),
-    current_bookings: parseInt(row[6] || "0", 10),
-    speaker: row[7] || "",
-    meet_url: row[8] || "",
-    calendar_event_id: row[9] || "",
-    status: (row[10] as Seminar["status"]) || "draft",
-    spreadsheet_id: row[11] || "",
-    speaker_title: isNewLayout ? row[12] || "" : "",
-    speaker_reference_url: isNewLayout ? (hasInvitationCode ? row[19] || "" : row[18] || "") : "",
-    format: (isNewLayout ? row[13] : "online") as Seminar["format"],
-    target: (isNewLayout ? row[14] : "public") as Seminar["target"],
-    invitation_code: hasInvitationCode ? row[15]?.trim() || "" : "",
-    image_url: isNewLayout ? (hasInvitationCode ? row[16] || "" : row[15] || "") : "",
-    created_at: isNewLayout ? (hasInvitationCode ? row[17] || "" : row[16] || "") : row[12] || "",
-    updated_at: isNewLayout ? (hasInvitationCode ? row[18] || "" : row[17] || "") : row[13] || "",
+    id: r[0],
+    title: r[1],
+    description: r[2],
+    date: r[3],
+    end_time: r[4],
+    capacity: parseInt(r[5] || "0", 10),
+    current_bookings: parseInt(r[6] || "0", 10),
+    speaker: r[7],
+    meet_url: r[8],
+    calendar_event_id: r[9],
+    status: (r[10] as Seminar["status"]) || "draft",
+    spreadsheet_id: r[11],
+    speaker_title: r[12],
+    format: (r[13] || "online") as Seminar["format"],
+    target: (r[14] || "public") as Seminar["target"],
+    invitation_code: r[15].trim(),
+    image_url: r[16],
+    created_at: r[17],
+    updated_at: r[18],
+    speaker_reference_url: r[19],
   };
 }
 
