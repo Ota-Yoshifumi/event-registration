@@ -96,7 +96,7 @@ export default function BookingPage({
 
     // ハイブリッドの場合は参加方法を必須
     const format = seminar?.format ?? "online";
-    const method: ParticipationMethod =
+    const method: ParticipationMethod | "" =
       format === "hybrid"
         ? (participationMethod === "venue" || participationMethod === "online"
             ? participationMethod
@@ -120,7 +120,7 @@ export default function BookingPage({
           ...formData,
           email: formData.email.trim(),
           invitation_code: invitationCode.trim() || undefined,
-          participation_method: method,
+          participation_method: method || undefined,
         }),
       });
 
