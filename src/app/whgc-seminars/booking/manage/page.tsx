@@ -321,102 +321,123 @@ export default function WhgcBookingManagePage() {
                   </div>
                 </div>
 
-                {/* 予約情報編集フォーム */}
-                <form onSubmit={handleUpdate} className="space-y-4">
-                  <h4 className="font-medium text-sm text-gray-500 uppercase tracking-wide">お申し込み情報の変更</h4>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="modal-name">
-                      氏名 <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="modal-name"
-                      value={fname}
-                      onChange={(e) => setFname(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="modal-email">
-                      メールアドレス <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="modal-email"
-                      type="email"
-                      value={femail}
-                      onChange={(e) => setFemail(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="modal-company">会社名</Label>
-                    <Input
-                      id="modal-company"
-                      value={fcompany}
-                      onChange={(e) => setFcompany(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="modal-department">部署</Label>
-                    <Input
-                      id="modal-department"
-                      value={fdepartment}
-                      onChange={(e) => setFdepartment(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="modal-phone">電話番号</Label>
-                    <Input
-                      id="modal-phone"
-                      type="tel"
-                      value={fphone}
-                      onChange={(e) => setFphone(e.target.value)}
-                    />
-                  </div>
-
-                  {/* 参加方法（オンライン/会場/ハイブリッドに応じて表示） */}
-                  {(seminar.format === "online" || seminar.format === "venue" || seminar.format === "hybrid") && (
-                    <div className="space-y-2">
-                      <Label>参加方法</Label>
-                      <div className="flex flex-col gap-2">
-                        {(seminar.format === "venue" || seminar.format === "hybrid") && (
-                          <label className="flex items-center gap-3 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="modal-participation_method"
-                              value="venue"
-                              checked={fparticipationMethod === "venue"}
-                              onChange={() => setFparticipationMethod("venue")}
-                              className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
-                            />
-                            <span>会場で参加する</span>
-                          </label>
-                        )}
-                        {(seminar.format === "online" || seminar.format === "hybrid") && (
-                          <label className="flex items-center gap-3 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="modal-participation_method"
-                              value="online"
-                              checked={fparticipationMethod === "online"}
-                              onChange={() => setFparticipationMethod("online")}
-                              className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
-                            />
-                            <span>オンラインで参加する</span>
-                          </label>
-                        )}
+                {/* 予約情報編集フォーム（申し込みモーダルと同じデザイン） */}
+                <Card className="overflow-hidden border border-gray-200">
+                  <div className="h-1.5 rounded-t-xl bg-primary" />
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">ご参加者情報の変更</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleUpdate} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="modal-name">
+                          お名前 <span className="text-red-500">*</span>
+                        </Label>
+                        <input
+                          id="modal-name"
+                          type="text"
+                          value={fname}
+                          onChange={(e) => setFname(e.target.value)}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
                       </div>
-                    </div>
-                  )}
 
-                  <Button type="submit" className="w-full" disabled={loadingModal}>
-                    {loadingModal ? "更新中..." : "予約情報を更新する"}
-                  </Button>
-                </form>
+                      <div className="space-y-2">
+                        <Label htmlFor="modal-email">
+                          メールアドレス <span className="text-red-500">*</span>
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          （会社のメールアドレスでご登録ください）
+                        </p>
+                        <input
+                          id="modal-email"
+                          type="email"
+                          value={femail}
+                          onChange={(e) => setFemail(e.target.value)}
+                          required
+                          autoComplete="email"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="modal-company">
+                          会社名 <span className="text-red-500">*</span>
+                        </Label>
+                        <input
+                          id="modal-company"
+                          type="text"
+                          value={fcompany}
+                          onChange={(e) => setFcompany(e.target.value)}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="modal-department">部署名</Label>
+                        <input
+                          id="modal-department"
+                          type="text"
+                          value={fdepartment}
+                          onChange={(e) => setFdepartment(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="modal-phone">電話番号</Label>
+                        <input
+                          id="modal-phone"
+                          type="tel"
+                          value={fphone}
+                          onChange={(e) => setFphone(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+
+                      {/* 参加方法（オンライン/会場/ハイブリッドに応じて表示） */}
+                      {(seminar.format === "online" || seminar.format === "venue" || seminar.format === "hybrid") && (
+                        <div className="space-y-3">
+                          <Label>参加方法</Label>
+                          <div className="flex flex-col gap-2">
+                            {(seminar.format === "venue" || seminar.format === "hybrid") && (
+                              <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="modal-participation_method"
+                                  value="venue"
+                                  checked={fparticipationMethod === "venue"}
+                                  onChange={() => setFparticipationMethod("venue")}
+                                  className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                                />
+                                <span>会場で参加する</span>
+                              </label>
+                            )}
+                            {(seminar.format === "online" || seminar.format === "hybrid") && (
+                              <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="modal-participation_method"
+                                  value="online"
+                                  checked={fparticipationMethod === "online"}
+                                  onChange={() => setFparticipationMethod("online")}
+                                  className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                                />
+                                <span>オンラインで参加する</span>
+                              </label>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <Button type="submit" className="w-full rounded-xl" disabled={loadingModal}>
+                        {loadingModal ? "更新中..." : "予約情報を更新する"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
 
                 {/* キャンセル */}
                 <div className="border-t pt-4">

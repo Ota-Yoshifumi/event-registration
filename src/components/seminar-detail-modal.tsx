@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import type { Seminar } from "@/lib/types";
+import type { Seminar, ParticipationMethod } from "@/lib/types";
 import { TENANT_KEYS } from "@/lib/tenant-config";
 import { normalizeLineBreaks } from "@/lib/utils";
 import { format } from "date-fns";
@@ -94,6 +94,9 @@ export function SeminarDetailModal({
   });
   const [emailConfirm, setEmailConfirm] = useState("");
   const [invitationCode, setInvitationCode] = useState("");
+  const [participationMethod, setParticipationMethod] = useState<
+    ParticipationMethod | ""
+  >("");
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -124,6 +127,15 @@ export function SeminarDetailModal({
       setFormError(null);
     }
   }, [seminarId]);
+
+  // 開催形式に応じて参加方法の初期値を設定（booking 表示時にも参照される）
+  useEffect(() => {
+    if (seminar) {
+      if (seminar.format === "online") setParticipationMethod("online");
+      else if (seminar.format === "venue") setParticipationMethod("venue");
+      else setParticipationMethod("");
+    }
+  }, [seminar?.id, seminar?.format]);
 
   const handleClose = () => {
     onClose();
@@ -162,6 +174,14 @@ export function SeminarDetailModal({
       return;
     }
 
+    const format = seminar.format ?? "online";
+    if (format === "hybrid") {
+      if (participationMethod !== "venue" && participationMethod !== "online") {
+        setFormError("参加方法（会場またはオンライン）を選択してください");
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -173,6 +193,12 @@ export function SeminarDetailModal({
           ...formData,
           email: formData.email.trim(),
           invitation_code: invitationCode.trim() || undefined,
+          participation_method:
+            format === "hybrid"
+              ? participationMethod || undefined
+              : format === "venue"
+                ? "venue"
+                : "online",
           // 会員判定・セミナー取得に必須。セミナーに付与された tenant または basePath/pathname から送信
           ...(tenantKey ? { tenant: tenantKey } : {}),
         }),
@@ -546,6 +572,45 @@ export function SeminarDetailModal({
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                       autoComplete="off"
                     />
+                  </div>
+                )}
+
+                {/* 参加方法（会場 / オンライン / ハイブリッドに応じて表示） */}
+                {(seminar.format === "venue" ||
+                  seminar.format === "online" ||
+                  seminar.format === "hybrid") && (
+                  <div className="space-y-3">
+                    <Label>参加方法</Label>
+                    <div className="flex flex-col gap-2">
+                      {(seminar.format === "venue" ||
+                        seminar.format === "hybrid") && (
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="modal-participation_method"
+                            value="venue"
+                            checked={participationMethod === "venue"}
+                            onChange={() => setParticipationMethod("venue")}
+                            className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                          />
+                          <span>会場で参加する</span>
+                        </label>
+                      )}
+                      {(seminar.format === "online" ||
+                        seminar.format === "hybrid") && (
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="modal-participation_method"
+                            value="online"
+                            checked={participationMethod === "online"}
+                            onChange={() => setParticipationMethod("online")}
+                            className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                          />
+                          <span>オンラインで参加する</span>
+                        </label>
+                      )}
+                    </div>
                   </div>
                 )}
 

@@ -4,7 +4,6 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -228,102 +227,123 @@ export default function ManagePage({
             </div>
           </div>
 
-          {/* 予約情報編集フォーム */}
-          <form onSubmit={handleUpdate} className="space-y-4">
-            <h4 className="font-medium text-sm text-gray-500 uppercase tracking-wide">お申し込み情報の変更</h4>
-
-            <div className="space-y-2">
-              <Label htmlFor="name">
-                氏名 <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">
-                メールアドレス <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="company">会社名</Label>
-              <Input
-                id="company"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="department">部署</Label>
-              <Input
-                id="department"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">電話番号</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
-
-            {/* 参加方法（オンライン/会場/ハイブリッドに応じて表示） */}
-            {seminar.format && (seminar.format === "online" || seminar.format === "venue" || seminar.format === "hybrid") && (
-              <div className="space-y-2">
-                <Label>参加方法</Label>
-                <div className="flex flex-col gap-2">
-                  {(seminar.format === "venue" || seminar.format === "hybrid") && (
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="participation_method"
-                        value="venue"
-                        checked={participationMethod === "venue"}
-                        onChange={() => setParticipationMethod("venue")}
-                        className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
-                      />
-                      <span>会場で参加する</span>
-                    </label>
-                  )}
-                  {(seminar.format === "online" || seminar.format === "hybrid") && (
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="participation_method"
-                        value="online"
-                        checked={participationMethod === "online"}
-                        onChange={() => setParticipationMethod("online")}
-                        className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
-                      />
-                      <span>オンラインで参加する</span>
-                    </label>
-                  )}
+          {/* 予約情報編集フォーム（申し込みモーダルと同じデザイン） */}
+          <Card className="overflow-hidden border border-gray-200">
+            <div className="h-1.5 rounded-t-xl bg-primary" />
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">ご参加者情報の変更</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleUpdate} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">
+                    お名前 <span className="text-red-500">*</span>
+                  </Label>
+                  <input
+                    id="name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
                 </div>
-              </div>
-            )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "更新中..." : "予約情報を更新する"}
-            </Button>
-          </form>
+                <div className="space-y-2">
+                  <Label htmlFor="email">
+                    メールアドレス <span className="text-red-500">*</span>
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    （会社のメールアドレスでご登録ください）
+                  </p>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="company">
+                    会社名 <span className="text-red-500">*</span>
+                  </Label>
+                  <input
+                    id="company"
+                    type="text"
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="department">部署名</Label>
+                  <input
+                    id="department"
+                    type="text"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">電話番号</Label>
+                  <input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                {/* 参加方法（オンライン/会場/ハイブリッドに応じて表示） */}
+                {seminar.format && (seminar.format === "online" || seminar.format === "venue" || seminar.format === "hybrid") && (
+                  <div className="space-y-3">
+                    <Label>参加方法</Label>
+                    <div className="flex flex-col gap-2">
+                      {(seminar.format === "venue" || seminar.format === "hybrid") && (
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="participation_method"
+                            value="venue"
+                            checked={participationMethod === "venue"}
+                            onChange={() => setParticipationMethod("venue")}
+                            className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                          />
+                          <span>会場で参加する</span>
+                        </label>
+                      )}
+                      {(seminar.format === "online" || seminar.format === "hybrid") && (
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="participation_method"
+                            value="online"
+                            checked={participationMethod === "online"}
+                            onChange={() => setParticipationMethod("online")}
+                            className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                          />
+                          <span>オンラインで参加する</span>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <Button type="submit" className="w-full rounded-xl" disabled={loading}>
+                  {loading ? "更新中..." : "予約情報を更新する"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
 
           {/* キャンセル */}
           <div className="border-t pt-4">
