@@ -12,14 +12,14 @@ const navItems = [
 ];
 
 interface AdminSidebarProps {
-  /** 管理画面のベースパス（例: /admin または /whgc-seminars/admin） */
+  /** 管理画面のベースパス（例: /manage-console または /whgc-seminars/manage-console） */
   basePath?: string;
   /** 公開サイトへのリンク（例: /seminars または /whgc-seminars） */
   publicPath?: string;
 }
 
 export function AdminSidebar({
-  basePath = "/admin",
+  basePath = "/manage-console",
   publicPath = "/seminars",
 }: AdminSidebarProps) {
   const pathname = usePathname();
