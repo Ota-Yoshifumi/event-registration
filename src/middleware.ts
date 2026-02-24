@@ -57,9 +57,9 @@ async function verifyAndDecodeToken(
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // テナント管理画面: /{tenant}/admin/*
+  // テナント管理画面: /{tenant}/manage-console/*
   for (const tenant of TENANT_KEYS) {
-    const adminPrefix = `/${tenant}/admin`;
+    const adminPrefix = `/${tenant}/manage-console`;
     if (pathname.startsWith(adminPrefix)) {
       // ログインページはスルー
       if (pathname === `${adminPrefix}/login`) {
@@ -78,20 +78,20 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 共通管理画面: /admin/*
-  if (pathname === "/admin/login") {
+  // 共通管理画面: /manage-console/*
+  if (pathname === "/manage-console/login") {
     return NextResponse.next();
   }
 
-  if (pathname.startsWith("/admin")) {
+  if (pathname.startsWith("/manage-console")) {
     const token = request.cookies.get("admin_token")?.value;
     const secret = process.env.ADMIN_JWT_SECRET;
     if (!token || !secret) {
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+      return NextResponse.redirect(new URL("/manage-console/login", request.url));
     }
     const { valid } = await verifyAndDecodeToken(token, secret);
     if (!valid) {
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+      return NextResponse.redirect(new URL("/manage-console/login", request.url));
     }
   }
 
@@ -100,10 +100,10 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/admin/:path*",
-    "/whgc-seminars/admin/:path*",
-    "/kgri-pic-center/admin/:path*",
-    "/aff-events/admin/:path*",
-    "/pic-courses/admin/:path*",
+    "/manage-console/:path*",
+    "/whgc-seminars/manage-console/:path*",
+    "/kgri-pic-center/manage-console/:path*",
+    "/aff-events/manage-console/:path*",
+    "/pic-courses/manage-console/:path*",
   ],
 };

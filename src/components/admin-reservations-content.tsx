@@ -108,7 +108,7 @@ function CopyLinkButton({
 }
 
 export interface AdminReservationsContentProps {
-  /** 管理画面のベースパス（例: /admin または /whgc-seminars/admin） */
+  /** 管理画面のベースパス（例: /manage-console または /whgc-seminars/manage-console） */
   adminBase: string;
   /** テナント指定時はそのテナントのセミナーのみ取得・更新する */
   tenant?: string;
