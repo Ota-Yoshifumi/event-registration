@@ -24,7 +24,7 @@ export async function createFolder(
   folderName: string
 ): Promise<string> {
   const token = await getAccessToken();
-  const response = await fetch(DRIVE_API, {
+  const response = await fetch(`${DRIVE_API}?supportsAllDrives=true`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -58,6 +58,8 @@ export async function listChildren(folderId: string): Promise<DriveFile[]> {
     q,
     fields: "files(id, name, mimeType, parents)",
     pageSize: "1000",
+    supportsAllDrives: "true",
+    includeItemsFromAllDrives: "true",
   });
 
   const response = await fetch(`${DRIVE_API}?${params.toString()}`, {
@@ -88,6 +90,7 @@ export async function moveFileToFolder(
   const params = new URLSearchParams({
     addParents: newParentFolderId,
     removeParents: previousParentId,
+    supportsAllDrives: "true",
   });
 
   const response = await fetch(`${DRIVE_API}/${fileId}?${params.toString()}`, {
@@ -117,7 +120,7 @@ export async function copyFile(
   const body: { parents?: string[]; name?: string } = { parents: [parentFolderId] };
   if (newName) body.name = newName;
 
-  const response = await fetch(`${DRIVE_API}/${fileId}/copy`, {
+  const response = await fetch(`${DRIVE_API}/${fileId}/copy?supportsAllDrives=true`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

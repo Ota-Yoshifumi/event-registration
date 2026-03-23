@@ -700,9 +700,9 @@ export async function createSeminarSpreadsheet(
   const targetFolderId = overrideFolderId || process.env.GOOGLE_DRIVE_FOLDER_ID;
   if (targetFolderId) {
     try {
-      // 現在の親を取得
+      // 現在の親を取得（共有ドライブ対応）
       const fileRes = await fetch(
-        `${DRIVE_API}/${spreadsheetId}?fields=parents`,
+        `${DRIVE_API}/${spreadsheetId}?fields=parents&supportsAllDrives=true`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!fileRes.ok) {
@@ -711,9 +711,9 @@ export async function createSeminarSpreadsheet(
         const fileData = await fileRes.json();
         const previousParents = (fileData.parents || []).join(",");
 
-        // 新しいフォルダに移動
+        // 新しいフォルダに移動（共有ドライブ対応）
         const moveRes = await fetch(
-          `${DRIVE_API}/${spreadsheetId}?addParents=${targetFolderId}&removeParents=${previousParents}&fields=id,parents`,
+          `${DRIVE_API}/${spreadsheetId}?addParents=${targetFolderId}&removeParents=${previousParents}&fields=id,parents&supportsAllDrives=true`,
           {
             method: "PATCH",
             headers: {
