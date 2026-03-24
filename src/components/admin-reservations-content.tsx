@@ -160,14 +160,12 @@ export function AdminReservationsContent({
       setReservations([]);
       return;
     }
-    const seminar = seminars.find((s) => s.id === selectedSeminarId);
-    if (!seminar?.spreadsheet_id) return;
 
     let cancelled = false;
     queueMicrotask(() => {
       if (!cancelled) setLoadingRes(true);
     });
-    fetch(`/api/reservations?spreadsheet_id=${seminar.spreadsheet_id}`)
+    fetch(`/api/reservations?seminar_id=${selectedSeminarId}`)
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled && Array.isArray(data)) setReservations(data);
@@ -178,7 +176,7 @@ export function AdminReservationsContent({
     return () => {
       cancelled = true;
     };
-  }, [selectedSeminarId, seminars]);
+  }, [selectedSeminarId]);
 
   const statusLabel: Record<string, string> = {
     draft: "下書き",
@@ -383,7 +381,6 @@ export function AdminReservationsContent({
               </CardContent>
 
               <CardFooter className="flex flex-col gap-3 border-t border-border px-5 pb-5 pt-4">
-                {hasSheet && (
                   <div className="admin-card-footer w-full">
                     <div className="flex items-center gap-1">
                       <Button
@@ -428,7 +425,6 @@ export function AdminReservationsContent({
                       />
                     </div>
                   </div>
-                )}
                 <div className="admin-card-footer w-full border-t border-border pt-3">
                   <Button variant="outline" size="sm" className="gap-1.5 text-[0.8125rem]" asChild>
                     <Link href={`${adminBase}/seminars/${s.id}/edit`}>

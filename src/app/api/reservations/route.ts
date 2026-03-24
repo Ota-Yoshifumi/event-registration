@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSheetData } from "@/lib/google/sheets";
+import { getD1 } from "@/lib/d1";
 import type { Reservation } from "@/lib/types";
 import { verifyAdminRequest } from "@/lib/auth";
 
@@ -31,15 +32,43 @@ export async function GET(request: NextRequest) {
   }
   try {
     const { searchParams } = new URL(request.url);
+    const seminarId = searchParams.get("seminar_id");
     const spreadsheetId = searchParams.get("spreadsheet_id");
 
-    if (!spreadsheetId) {
-      return NextResponse.json({ error: "spreadsheet_id が必要です" }, { status: 400 });
+    // D1 から取得（seminar_id 指定時）
+    if (seminarId) {
+      const db = await getD1();
+      const { results } = await db
+        .prepare("SELECT * FROM registrations WHERE seminar_id = ? ORDER BY created_at ASC")
+        .bind(seminarId)
+        .all();
+      const reservations: Reservation[] = (results as Record<string, unknown>[]).map((r) => ({
+        id: r.id as string,
+        name: r.name as string,
+        email: r.email as string,
+        company: (r.company as string) || "",
+        department: (r.department as string) || "",
+        phone: (r.phone as string) || "",
+        status: (r.status as Reservation["status"]) || "confirmed",
+        pre_survey_completed: r.pre_survey_completed === 1,
+        post_survey_completed: r.post_survey_completed === 1,
+        created_at: (r.created_at as string) || "",
+        note: (r.note as string) || "",
+        reservation_number: (r.reservation_number as string) || undefined,
+        participation_method:
+          r.participation_method === "venue" || r.participation_method === "online"
+            ? (r.participation_method as "venue" | "online")
+            : undefined,
+      }));
+      return NextResponse.json(reservations);
     }
 
+    // Google Sheets から取得（spreadsheet_id 指定時・後方互換）
+    if (!spreadsheetId) {
+      return NextResponse.json({ error: "seminar_id または spreadsheet_id が必要です" }, { status: 400 });
+    }
     const rows = await getSheetData(spreadsheetId, "予約情報");
     const reservations = rows.slice(1).map(rowToReservation);
-
     return NextResponse.json(reservations);
   } catch (error) {
     console.error("Error fetching reservations:", error);
