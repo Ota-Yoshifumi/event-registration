@@ -109,6 +109,21 @@ export async function GET(request: NextRequest) {
 
     const reservation = rowToReservation(reservationRow);
 
+    // メールアドレスで本人確認（必須。大文字小文字を無視して照合）
+    const emailParam = searchParams.get("email")?.trim().toLowerCase();
+    if (!emailParam) {
+      return NextResponse.json(
+        { error: "予約番号が見つかりません" },
+        { status: 404 }
+      );
+    }
+    if (reservation.email.trim().toLowerCase() !== emailParam) {
+      return NextResponse.json(
+        { error: "予約番号が見つかりません" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({
       seminar_id: seminar.id,
       reservation_id: index.reservation_id,

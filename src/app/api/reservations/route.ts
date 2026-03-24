@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSheetData } from "@/lib/google/sheets";
 import type { Reservation } from "@/lib/types";
+import { verifyAdminRequest } from "@/lib/auth";
 
 // 予約情報シート列順: ... K:備考 L:予約番号 M:参加方法（13列目）
 
@@ -24,6 +25,10 @@ function rowToReservation(row: string[]): Reservation {
 }
 
 export async function GET(request: NextRequest) {
+  const ok = await verifyAdminRequest(request);
+  if (!ok) {
+    return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+  }
   try {
     const { searchParams } = new URL(request.url);
     const spreadsheetId = searchParams.get("spreadsheet_id");

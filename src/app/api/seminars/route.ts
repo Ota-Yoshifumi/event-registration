@@ -14,6 +14,7 @@ import { createCalendarEvent } from "@/lib/google/calendar";
 import { rowToSeminar } from "@/lib/seminars";
 import { getSurveyQuestions } from "@/lib/survey/storage";
 import { isTenantKey, getTenantConfig } from "@/lib/tenant-config";
+import { verifyAdminRequest } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
     const tenant = searchParams.get("tenant");
     const statusFilter = searchParams.get("status");
     const withSurveyStatus = searchParams.get("with_survey_status") === "1";
+    const isAdmin = await verifyAdminRequest(request);
 
     // マスタースプレッドシートのヘッダーを最新形式に自動修正
     const tenantKeyGet = tenant && isTenantKey(tenant) ? tenant : undefined;
@@ -53,6 +55,11 @@ export async function GET(request: NextRequest) {
 
     seminars.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+    // 非管理者には招待コードを返さない
+    const maskInvitationCode = !isAdmin
+      ? <T extends { invitation_code: string }>(s: T) => ({ ...s, invitation_code: "" })
+      : <T>(s: T) => s;
+
     if (withSurveyStatus) {
       const withStatus = await Promise.all(
         seminars.map(async (s) => {
@@ -70,10 +77,10 @@ export async function GET(request: NextRequest) {
           };
         })
       );
-      return NextResponse.json(withStatus);
+      return NextResponse.json(withStatus.map(maskInvitationCode));
     }
 
-    return NextResponse.json(seminars);
+    return NextResponse.json(seminars.map(maskInvitationCode));
   } catch (error) {
     console.error("Error fetching seminars:", error);
     return NextResponse.json({ error: "セミナー一覧の取得に失敗しました" }, { status: 500 });
@@ -81,6 +88,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const ok = await verifyAdminRequest(request);
+  if (!ok) {
+    return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+  }
   try {
     const body = await request.json();
     const {

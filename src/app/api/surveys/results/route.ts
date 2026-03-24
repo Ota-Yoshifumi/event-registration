@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSheetData } from "@/lib/google/sheets";
 import type { PreSurveyResponse, PostSurveyResponse } from "@/lib/types";
+import { verifyAdminRequest } from "@/lib/auth";
 
 // 事前アンケート列順:
 // A:ID B:予約ID C:関心度(1-5) D:期待すること E:関連経験 F:事前質問 G:回答日時 H:備考
@@ -36,6 +37,10 @@ function rowToPostSurvey(row: string[]): PostSurveyResponse {
 }
 
 export async function GET(request: NextRequest) {
+  const ok = await verifyAdminRequest(request);
+  if (!ok) {
+    return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+  }
   try {
     const { searchParams } = new URL(request.url);
     const spreadsheetId = searchParams.get("spreadsheet_id");

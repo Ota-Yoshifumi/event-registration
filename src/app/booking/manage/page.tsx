@@ -49,6 +49,7 @@ interface ReservationData {
 
 export default function BookingManagePage() {
   const [number, setNumber] = useState("");
+  const [searchEmail, setSearchEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -58,6 +59,7 @@ export default function BookingManagePage() {
   const [reservation, setReservation] = useState<ReservationData | null>(null);
   const [seminarId, setSeminarId] = useState("");
   const [rid, setRid] = useState("");
+  const [ownerEmail, setOwnerEmail] = useState("");
   const [loadingModal, setLoadingModal] = useState(false);
   const [cancelled, setCancelled] = useState(false);
 
@@ -72,15 +74,20 @@ export default function BookingManagePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const n = number.trim();
+    const em = searchEmail.trim();
     if (!n) {
       setError("予約番号を入力してください");
+      return;
+    }
+    if (!em) {
+      setError("メールアドレスを入力してください");
       return;
     }
     setError("");
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/bookings/by-number?number=${encodeURIComponent(n)}`
+        `/api/bookings/by-number?number=${encodeURIComponent(n)}&email=${encodeURIComponent(em)}`
       );
       if (!res.ok) {
         const data = await res.json();
@@ -90,10 +97,12 @@ export default function BookingManagePage() {
       const data = await res.json();
       const foundSeminarId = data.seminar_id;
       const foundRid = data.reservation_id;
+      const foundReservation: ReservationData = data.reservation;
       setSeminarId(foundSeminarId);
       setRid(foundRid);
+      setOwnerEmail(em);
 
-      // セミナーと予約情報を取得してモーダル表示
+      // セミナー情報を取得してモーダル表示
       setCancelled(false);
       setModalOpen(true);
       setLoadingModal(true);
@@ -105,20 +114,13 @@ export default function BookingManagePage() {
         const sem: Seminar = await semRes.json();
         setSeminar(sem);
 
-        if (sem.spreadsheet_id) {
-          const resRes = await fetch(`/api/reservations?spreadsheet_id=${sem.spreadsheet_id}`);
-          const reservations: ReservationData[] = await resRes.json();
-          const found = reservations.find((r) => r.id === foundRid);
-          if (found) {
-            setReservation(found);
-            setFname(found.name);
-            setFemail(found.email);
-            setFcompany(found.company);
-            setFdepartment(found.department);
-            setFphone(found.phone);
-            setFparticipationMethod(found.participation_method || "");
-          }
-        }
+        setReservation(foundReservation);
+        setFname(foundReservation.name);
+        setFemail(foundReservation.email);
+        setFcompany(foundReservation.company);
+        setFdepartment(foundReservation.department);
+        setFphone(foundReservation.phone);
+        setFparticipationMethod(foundReservation.participation_method || "");
       } catch {
         setError("予約情報の読み込みに失敗しました");
         setModalOpen(false);
@@ -148,6 +150,7 @@ export default function BookingManagePage() {
           department: fdepartment,
           phone: fphone,
           participation_method: fparticipationMethod || undefined,
+          owner_email: ownerEmail,
         }),
       });
       if (!res.ok) {
@@ -171,7 +174,7 @@ export default function BookingManagePage() {
       const res = await fetch("/api/bookings", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seminar_id: seminarId, id: rid }),
+        body: JSON.stringify({ seminar_id: seminarId, id: rid, email: ownerEmail }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -205,7 +208,7 @@ export default function BookingManagePage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              メールに記載の予約番号を入力してください。確認後、申し込み内容の変更やキャンセルができます。
+              メールに記載の予約番号と、登録時のメールアドレスを入力してください。確認後、申し込み内容の変更やキャンセルができます。
             </p>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -221,6 +224,20 @@ export default function BookingManagePage() {
                   }}
                   className="font-mono"
                   autoComplete="off"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="search-email">登録メールアドレス</Label>
+                <Input
+                  id="search-email"
+                  type="email"
+                  placeholder="申し込み時のメールアドレス"
+                  value={searchEmail}
+                  onChange={(e) => {
+                    setSearchEmail(e.target.value);
+                    if (error) setError("");
+                  }}
+                  autoComplete="email"
                 />
               </div>
               <Button

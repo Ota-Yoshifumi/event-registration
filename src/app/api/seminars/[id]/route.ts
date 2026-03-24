@@ -11,6 +11,7 @@ import {
 import { updateCalendarEvent, deleteCalendarEvent } from "@/lib/google/calendar";
 import { rowToSeminar } from "@/lib/seminars";
 import { isTenantKey } from "@/lib/tenant-config";
+import { verifyAdminRequest } from "@/lib/auth";
 
 async function resolveMasterRow(
   id: string,
@@ -35,7 +36,12 @@ export async function GET(
       return NextResponse.json({ error: "セミナーが見つかりません" }, { status: 404 });
     }
 
-    return NextResponse.json(rowToSeminar(result.values));
+    const seminar = rowToSeminar(result.values);
+    const isAdmin = await verifyAdminRequest(request);
+    if (!isAdmin) {
+      seminar.invitation_code = "";
+    }
+    return NextResponse.json(seminar);
   } catch (error) {
     console.error("Error fetching seminar:", error);
     return NextResponse.json({ error: "セミナーの取得に失敗しました" }, { status: 500 });
@@ -46,6 +52,10 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ok = await verifyAdminRequest(request);
+  if (!ok) {
+    return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+  }
   try {
     const { id } = await params;
     const body = await request.json();
@@ -129,6 +139,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ok = await verifyAdminRequest(request);
+  if (!ok) {
+    return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+  }
   try {
     const { id } = await params;
     const url = new URL(request.url);

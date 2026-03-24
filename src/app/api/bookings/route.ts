@@ -18,6 +18,7 @@ import { generateReservationNumber } from "@/lib/reservation-number";
 import { getTenantConfig, isTenantKey, TENANT_KEYS, type TenantKey } from "@/lib/tenant-config";
 import { getSurveyQuestions } from "@/lib/survey/storage";
 import { encodeSurveyToken } from "@/lib/survey-token";
+import { verifyAdminRequest } from "@/lib/auth";
 
 /** body に tenant が無い場合、Referer のパスからテナントを補完（クライアント渡し忘れ対策） */
 function tenantFromReferer(request: NextRequest): TenantKey | undefined {
@@ -317,7 +318,7 @@ async function resolveBooking(
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { seminar_id, id, name, email, company, department, phone, participation_method, tenant } = body;
+    const { seminar_id, id, name, email, company, department, phone, participation_method, tenant, owner_email } = body;
     const tenantKey = tenant && isTenantKey(tenant) ? tenant : undefined;
 
     if (!seminar_id || !id) {
@@ -331,6 +332,18 @@ export async function PUT(request: NextRequest) {
 
     const { seminar, reservationResult } = result;
     const row = reservationResult.values;
+
+    // 管理者でない場合はメールアドレスで所有者確認
+    const isAdmin = await verifyAdminRequest(request);
+    if (!isAdmin) {
+      if (!owner_email) {
+        return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+      }
+      const storedEmail = (row[2] || "").trim().toLowerCase();
+      if (owner_email.trim().toLowerCase() !== storedEmail) {
+        return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+      }
+    }
 
     const updated = [
       row[0],
@@ -372,7 +385,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json();
-    const { seminar_id, id, tenant } = body;
+    const { seminar_id, id, tenant, email } = body;
     const tenantKey = tenant && isTenantKey(tenant) ? tenant : undefined;
 
     if (!seminar_id || !id) {
@@ -386,6 +399,18 @@ export async function DELETE(request: NextRequest) {
 
     const { seminar, seminarResult, reservationResult } = result;
     const row = reservationResult.values;
+
+    // 管理者でない場合はメールアドレスで所有者確認
+    const isAdmin = await verifyAdminRequest(request);
+    if (!isAdmin) {
+      if (!email) {
+        return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+      }
+      const storedEmail = (row[2] || "").trim().toLowerCase();
+      if (email.trim().toLowerCase() !== storedEmail) {
+        return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+      }
+    }
 
     const updated = [
       row[0], row[1], row[2], row[3], row[4], row[5],
