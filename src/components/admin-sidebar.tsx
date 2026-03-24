@@ -10,7 +10,8 @@ interface NavItem {
   path: string;
   label: string;
   icon: string;
-  absolutePath?: string; // basePath を無視して絶対パスでリンクする場合に指定
+  absolutePath?: string;   // basePath を無視して絶対パスでリンクする場合に指定
+  superAdminOnly?: boolean; // true の場合、共通管理画面（/manage-console）のみ表示
 }
 
 interface NavGroup {
@@ -36,7 +37,7 @@ const navEntries: NavEntry[] = [
       { path: "/email-templates", label: "テンプレート管理", icon: "📄" },
     ],
   },
-  { path: "/newsletter", label: "メルマガ管理", icon: "📬", absolutePath: "/manage-console/newsletter" },
+  { path: "/newsletter", label: "メルマガ管理", icon: "📬", absolutePath: "/manage-console/newsletter", superAdminOnly: true },
 ];
 
 interface AdminSidebarProps {
@@ -51,6 +52,7 @@ export function AdminSidebar({
   publicPath = "/seminars",
 }: AdminSidebarProps) {
   const pathname = usePathname();
+  const isSuperAdmin = basePath === "/manage-console";
 
   // メール配信グループが現在のパスに含まれていれば初期展開
   const emailPaths = ["/email-templates", "/email-schedules"];
@@ -68,7 +70,7 @@ export function AdminSidebar({
         </Link>
       </div>
       <nav className="flex-1 space-y-0.5 px-3 pb-4">
-        {navEntries.map((entry) => {
+        {navEntries.filter((entry) => !("superAdminOnly" in entry && entry.superAdminOnly && !isSuperAdmin)).map((entry) => {
           if ("type" in entry && entry.type === "group") {
             const isGroupActive = entry.items.some((item) =>
               pathname.startsWith(`${basePath}${item.path}`)
