@@ -10,6 +10,7 @@ interface NavItem {
   path: string;
   label: string;
   icon: string;
+  absolutePath?: string; // basePath を無視して絶対パスでリンクする場合に指定
 }
 
 interface NavGroup {
@@ -31,11 +32,11 @@ const navEntries: NavEntry[] = [
     label: "メール配信",
     icon: "📨",
     items: [
-      { path: "/email-templates", label: "テンプレート管理", icon: "📄" },
       { path: "/email-schedules", label: "配信スケジュール", icon: "🗓️" },
+      { path: "/email-templates", label: "テンプレート管理", icon: "📄" },
     ],
   },
-  { path: "/newsletter", label: "メルマガ管理", icon: "📬" },
+  { path: "/newsletter", label: "メルマガ管理", icon: "📬", absolutePath: "/manage-console/newsletter" },
 ];
 
 interface AdminSidebarProps {
@@ -117,7 +118,7 @@ export function AdminSidebar({
           }
 
           const item = entry as NavItem;
-          const href = `${basePath}${item.path}`;
+          const href = item.absolutePath ?? `${basePath}${item.path}`;
           const isActive =
             item.path === ""
               ? pathname === basePath
