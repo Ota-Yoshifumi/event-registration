@@ -26,9 +26,9 @@ export async function generateEmailSchedules(seminarId: string, seminarDate: str
     for (const [templateId, offset] of Object.entries(SCHEDULE_OFFSETS)) {
       const scheduledDate = calcScheduledDate(seminarDate, offset);
 
-      const existing = await db.prepare(
+      const existing = (await db.prepare(
         "SELECT id, status FROM email_schedules WHERE seminar_id = ? AND template_id = ?"
-      ).bind(seminarId, templateId).first<{ id: number; status: string }>();
+      ).bind(seminarId, templateId).first() as any) as { id: number; status: string } | null;
 
       if (existing) {
         if (existing.status === "pending") {

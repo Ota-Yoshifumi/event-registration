@@ -29,11 +29,12 @@ export async function POST(request: NextRequest) {
     const todayJst = new Date(nowUtc.getTime() + jstOffset).toISOString().slice(0, 10);
 
     // 本日送信すべき pending かつ enabled のスケジュールを取得
-    const { results: dueSschedules } = await db.prepare(
+    const rawDue = await db.prepare(
       `SELECT * FROM email_schedules
        WHERE scheduled_date = ? AND status = 'pending' AND enabled = 1
        ORDER BY seminar_id, template_id`
-    ).bind(todayJst).all<EmailSchedule>();
+    ).bind(todayJst).all() as any;
+    const dueSschedules = (rawDue.results ?? []) as EmailSchedule[];
 
     if (dueSschedules.length === 0) {
       return NextResponse.json({ message: "本日送信対象のスケジュールはありません", processed: 0 });
@@ -49,9 +50,9 @@ export async function POST(request: NextRequest) {
     }> = [];
 
     for (const schedule of dueSschedules) {
-      const template = await db.prepare(
+      const template = (await db.prepare(
         "SELECT * FROM email_templates WHERE id = ?"
-      ).bind(schedule.template_id).first<EmailTemplate>();
+      ).bind(schedule.template_id).first() as any) as EmailTemplate | null;
 
       if (!template) {
         console.error(`[Cron] Template not found: ${schedule.template_id}`);

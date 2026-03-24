@@ -18,9 +18,9 @@ export async function PATCH(
     const body = await request.json();
     const db = await getD1();
 
-    const existing = await db.prepare(
+    const existing = (await db.prepare(
       "SELECT * FROM email_schedules WHERE id = ? AND seminar_id = ?"
-    ).bind(Number(scheduleId), id).first<EmailSchedule>();
+    ).bind(Number(scheduleId), id).first() as any) as EmailSchedule | null;
 
     if (!existing) {
       return NextResponse.json({ error: "スケジュールが見つかりません" }, { status: 404 });
@@ -41,9 +41,9 @@ export async function PATCH(
        WHERE id = ?`
     ).bind(enabled, scheduledDate, sendTime, now, existing.id).run();
 
-    const updated = await db.prepare(
+    const updated = (await db.prepare(
       "SELECT * FROM email_schedules WHERE id = ?"
-    ).bind(existing.id).first<EmailSchedule>();
+    ).bind(existing.id).first() as any) as EmailSchedule | null;
 
     return NextResponse.json(updated);
   } catch (error) {

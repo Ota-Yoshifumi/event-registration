@@ -11,9 +11,9 @@ export async function GET(
   try {
     const { id } = await params;
     const db = await getD1();
-    const template = await db.prepare(
+    const template = (await db.prepare(
       "SELECT * FROM email_templates WHERE id = ?"
-    ).bind(id).first<EmailTemplate>();
+    ).bind(id).first() as any) as EmailTemplate | null;
 
     if (!template) {
       return NextResponse.json({ error: "テンプレートが見つかりません" }, { status: 404 });
@@ -61,9 +61,9 @@ export async function PUT(
        WHERE id = ?`
     ).bind(name ?? existing.name, subject, bodyText, now, id).run();
 
-    const updated = await db.prepare(
+    const updated = (await db.prepare(
       "SELECT * FROM email_templates WHERE id = ?"
-    ).bind(id).first<EmailTemplate>();
+    ).bind(id).first() as any) as EmailTemplate | null;
 
     return NextResponse.json(updated);
   } catch (error) {

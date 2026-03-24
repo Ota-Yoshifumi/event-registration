@@ -6,9 +6,10 @@ import type { EmailTemplate } from "@/lib/d1";
 export async function GET() {
   try {
     const db = await getD1();
-    const { results } = await db.prepare(
+    const raw = await db.prepare(
       "SELECT * FROM email_templates ORDER BY id"
-    ).all<EmailTemplate>();
+    ).all() as any;
+    const results = (raw.results ?? []) as EmailTemplate[];
     return NextResponse.json(results);
   } catch (error) {
     console.error("[EmailTemplates] GET error:", error);

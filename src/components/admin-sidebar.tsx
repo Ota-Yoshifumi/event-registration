@@ -31,8 +31,8 @@ const navEntries: NavEntry[] = [
     label: "メール配信",
     icon: "📨",
     items: [
-      { path: "/email-templates", label: "テンプレート管理" },
-      { path: "/email-schedules", label: "配信スケジュール" },
+      { path: "/email-templates", label: "テンプレート管理", icon: "📄" },
+      { path: "/email-schedules", label: "配信スケジュール", icon: "🗓️" },
     ],
   },
 ];

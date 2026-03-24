@@ -21,9 +21,9 @@ export async function POST(
 
     const db = await getD1();
 
-    const schedule = await db.prepare(
+    const schedule = (await db.prepare(
       "SELECT * FROM email_schedules WHERE id = ?"
-    ).bind(Number(scheduleId)).first<EmailSchedule>();
+    ).bind(Number(scheduleId)).first() as any) as EmailSchedule | null;
 
     if (!schedule) {
       return NextResponse.json({ error: "スケジュールが見つかりません" }, { status: 404 });
@@ -37,9 +37,9 @@ export async function POST(
       return NextResponse.json({ error: "このスケジュールは無効です" }, { status: 400 });
     }
 
-    const template = await db.prepare(
+    const template = (await db.prepare(
       "SELECT * FROM email_templates WHERE id = ?"
-    ).bind(schedule.template_id).first<EmailTemplate>();
+    ).bind(schedule.template_id).first() as any) as EmailTemplate | null;
 
     if (!template) {
       return NextResponse.json({ error: "テンプレートが見つかりません" }, { status: 404 });

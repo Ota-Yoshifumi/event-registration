@@ -28,19 +28,19 @@ export async function POST(
 
     const db = await getD1();
 
-    const schedule = await db
+    const schedule = (await db
       .prepare("SELECT * FROM email_schedules WHERE id = ?")
       .bind(Number(scheduleId))
-      .first<EmailSchedule>();
+      .first() as any) as EmailSchedule | null;
 
     if (!schedule) {
       return NextResponse.json({ error: "スケジュールが見つかりません" }, { status: 404 });
     }
 
-    const template = await db
+    const template = (await db
       .prepare("SELECT * FROM email_templates WHERE id = ?")
       .bind(schedule.template_id)
-      .first<EmailTemplate>();
+      .first() as any) as EmailTemplate | null;
 
     if (!template) {
       return NextResponse.json({ error: "テンプレートが見つかりません" }, { status: 404 });

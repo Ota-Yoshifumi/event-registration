@@ -26,7 +26,8 @@ export async function GET(
     }
     query += " ORDER BY sent_at DESC";
 
-    const { results } = await db.prepare(query).bind(...binds).all<EmailSendLog>();
+    const raw = await db.prepare(query).bind(...binds).all() as any;
+    const results = (raw.results ?? []) as EmailSendLog[];
     return NextResponse.json(results);
   } catch (error) {
     console.error("[EmailSendLogs] GET error:", error);

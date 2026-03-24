@@ -31,9 +31,10 @@ export async function GET(
   try {
     const { id } = await params;
     const db = await getD1();
-    const { results } = await db.prepare(
+    const raw = await db.prepare(
       "SELECT * FROM email_schedules WHERE seminar_id = ? ORDER BY scheduled_date"
-    ).bind(id).all<EmailSchedule>();
+    ).bind(id).all() as any;
+    const results = (raw.results ?? []) as EmailSchedule[];
 
     return NextResponse.json(results);
   } catch (error) {
@@ -78,9 +79,9 @@ export async function POST(
       const scheduledDate = calcScheduledDate(seminar.date, offset);
 
       // 既存レコード確認
-      const existing = await db.prepare(
+      const existing = (await db.prepare(
         "SELECT id, status FROM email_schedules WHERE seminar_id = ? AND template_id = ?"
-      ).bind(id, templateId).first<{ id: number; status: string }>();
+      ).bind(id, templateId).first() as any) as { id: number; status: string } | null;
 
       if (existing) {
         // pending のみ日付を再計算
@@ -98,11 +99,12 @@ export async function POST(
       }
     }
 
-    const { results } = await db.prepare(
+    const raw2 = await db.prepare(
       "SELECT * FROM email_schedules WHERE seminar_id = ? ORDER BY scheduled_date"
-    ).bind(id).all<EmailSchedule>();
+    ).bind(id).all() as any;
+    const results2 = (raw2.results ?? []) as EmailSchedule[];
 
-    return NextResponse.json(results);
+    return NextResponse.json(results2);
   } catch (error) {
     console.error("[EmailSchedules] POST error:", error);
     return NextResponse.json({ error: "スケジュールの生成に失敗しました" }, { status: 500 });
