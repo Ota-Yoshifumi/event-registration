@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import type { EmailSchedule } from "@/lib/d1";
 import { RefreshCw, CalendarDays, ExternalLink, Clock, MapPin, Users, Video } from "lucide-react";
 
-const ADMIN_BASE = "/manage-console";
+const ADMIN_BASE = "/super-manage-console";
 
 const TEMPLATE_LABELS: Record<string, string> = {
   reminder_30: "30日前案内",

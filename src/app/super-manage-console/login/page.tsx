@@ -52,7 +52,7 @@ function AdminLoginForm() {
       }
 
       toast.success("ログインしました");
-      router.replace(data.tenant ? `/${data.tenant}/manage-console` : "/manage-console");
+      router.replace(data.tenant ? `/${data.tenant}/manage-console` : "/super-manage-console");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "ログインに失敗しました");

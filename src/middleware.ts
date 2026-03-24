@@ -78,21 +78,21 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 共通管理画面: /manage-console/*
-  if (pathname === "/manage-console/login") {
+  // 共通管理画面: /super-manage-console/*
+  if (pathname === "/super-manage-console/login") {
     return NextResponse.next();
   }
 
-  if (pathname.startsWith("/manage-console")) {
+  if (pathname.startsWith("/super-manage-console")) {
     const token = request.cookies.get("admin_token")?.value;
     const secret = process.env.ADMIN_JWT_SECRET;
     if (!token || !secret) {
-      return NextResponse.redirect(new URL("/manage-console/login", request.url));
+      return NextResponse.redirect(new URL("/super-manage-console/login", request.url));
     }
     const { valid, payload } = await verifyAndDecodeToken(token, secret);
     // 共通管理者は tenant フィールドなしの JWT のみ許可（テナント管理者の侵入を防ぐ）
     if (!valid || payload?.tenant) {
-      return NextResponse.redirect(new URL("/manage-console/login", request.url));
+      return NextResponse.redirect(new URL("/super-manage-console/login", request.url));
     }
   }
 
@@ -101,7 +101,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/manage-console/:path*",
+    "/super-manage-console/:path*",
     "/whgc-seminars/manage-console/:path*",
     "/kgri-pic-center/manage-console/:path*",
     "/aff-events/manage-console/:path*",

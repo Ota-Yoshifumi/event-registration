@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, LogOut } from "lucide-react";
 
 interface NavItem {
   path: string;
@@ -37,7 +37,7 @@ const navEntries: NavEntry[] = [
       { path: "/email-templates", label: "テンプレート管理", icon: "📄" },
     ],
   },
-  { path: "/newsletter", label: "メルマガ管理", icon: "📬", absolutePath: "/manage-console/newsletter", superAdminOnly: true },
+  { path: "/newsletter", label: "メルマガ管理", icon: "📬", absolutePath: "/super-manage-console/newsletter", superAdminOnly: true },
 ];
 
 interface AdminSidebarProps {
@@ -48,11 +48,18 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({
-  basePath = "/manage-console",
+  basePath = "/super-manage-console",
   publicPath = "/seminars",
 }: AdminSidebarProps) {
   const pathname = usePathname();
-  const isSuperAdmin = basePath === "/manage-console";
+  const router = useRouter();
+  const isSuperAdmin = basePath === "/super-manage-console";
+
+  async function handleLogout() {
+    await fetch("/api/admin/logout", { method: "POST" });
+    router.replace(`${basePath}/login`);
+    router.refresh();
+  }
 
   // メール配信グループが現在のパスに含まれていれば初期展開
   const emailPaths = ["/email-templates", "/email-schedules"];
@@ -142,13 +149,20 @@ export function AdminSidebar({
           );
         })}
       </nav>
-      <div className="border-t border-sidebar-border px-5 py-4">
+      <div className="border-t border-sidebar-border px-5 py-4 space-y-3">
         <Link
           href={publicPath}
           className="text-[0.8125rem] text-sidebar-foreground/80 hover:text-sidebar-foreground transition-colors"
         >
           公開サイトへ →
         </Link>
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-2 text-[0.8125rem] text-sidebar-foreground/60 hover:text-red-500 transition-colors"
+        >
+          <LogOut className="size-3.5" />
+          ログアウト
+        </button>
       </div>
     </aside>
   );
