@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getD1 } from "@/lib/d1";
+import { getD1, getSeminarByIdFromD1 } from "@/lib/d1";
 import type { EmailSchedule } from "@/lib/d1";
 import { verifyAdminRequest } from "@/lib/auth";
-import { findMasterRowById, findMasterRowByIdForTenant } from "@/lib/google/sheets";
-import { rowToSeminar } from "@/lib/seminars";
-import { isTenantKey } from "@/lib/tenant-config";
 
 // タイミング定義: template_id -> オフセット日数
 const SCHEDULE_OFFSETS: Record<string, number> = {
@@ -55,19 +52,13 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const body = await request.json().catch(() => ({}));
-    const tenant = body.tenant && isTenantKey(body.tenant) ? body.tenant : null;
 
-    // セミナー情報の取得
-    const masterResult = tenant
-      ? await findMasterRowByIdForTenant(tenant, id)
-      : await findMasterRowById(id);
-
-    if (!masterResult) {
+    // セミナー情報の取得（D1）
+    const seminar = await getSeminarByIdFromD1(id);
+    if (!seminar) {
       return NextResponse.json({ error: "セミナーが見つかりません" }, { status: 404 });
     }
 
-    const seminar = rowToSeminar(masterResult.values);
     if (!seminar.date) {
       return NextResponse.json({ error: "セミナーの開催日が未設定です" }, { status: 400 });
     }

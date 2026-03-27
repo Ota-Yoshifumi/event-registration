@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  findMasterRowById,
-  findMasterRowByIdForTenant,
-  updateMasterRow,
-  updateMasterRowForTenant,
   uploadImageToDrive,
   findRowById,
   updateRow
 } from "@/lib/google/sheets";
 import { getTenantConfig, isTenantKey } from "@/lib/tenant-config";
+import { getSeminarByIdFromD1, updateSeminarInD1 } from "@/lib/d1";
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -24,11 +21,8 @@ export async function POST(
     const tenantKey = tenantParam && isTenantKey(tenantParam) ? tenantParam : undefined;
     const tenantConfig = tenantKey ? getTenantConfig(tenantKey) : null;
 
-    const result = tenantKey
-      ? await findMasterRowByIdForTenant(tenantKey, id)
-      : await findMasterRowById(id);
-
-    if (!result) {
+    const seminar = await getSeminarByIdFromD1(id);
+    if (!seminar) {
       return NextResponse.json({ error: "セミナーが見つかりません" }, { status: 404 });
     }
 
@@ -65,25 +59,14 @@ export async function POST(
     console.log("[Image Upload] Upload successful, URL:", imageUrl);
 
     const now = new Date().toISOString();
-    const individualSpreadsheetId = result.values[11]; // L列: spreadsheet_id
 
-    // 1. マスタースプレッドシートの Q列（インデックス16）に画像URL を更新
-    //    列順: ... P(15):招待コード Q(16):画像URL R(17):作成日時 S(18):更新日時 T(19):参考URL
-    console.log("[Image Upload] Updating master spreadsheet...");
-
-    const updatedMaster = [...result.values];
-    while (updatedMaster.length < 20) updatedMaster.push("");
-    updatedMaster[16] = imageUrl;  // Q列: 画像URL
-    updatedMaster[18] = now;        // S列: 更新日時
-
-    if (tenantKey) {
-      await updateMasterRowForTenant(tenantKey, result.rowIndex, updatedMaster);
-    } else {
-      await updateMasterRow(result.rowIndex, updatedMaster);
-    }
-    console.log("[Image Upload] Master spreadsheet update successful");
+    // 1. D1 の image_url を更新
+    console.log("[Image Upload] Updating D1...");
+    await updateSeminarInD1(id, { image_url: imageUrl, updated_at: now });
+    console.log("[Image Upload] D1 update successful");
 
     // 2. 個別イベントスプレッドシートの「イベント情報」シートも更新
+    const individualSpreadsheetId = seminar.spreadsheet_id;
     if (individualSpreadsheetId) {
       console.log("[Image Upload] Updating individual spreadsheet:", individualSpreadsheetId);
 
