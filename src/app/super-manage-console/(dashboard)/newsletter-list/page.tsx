@@ -9,7 +9,9 @@ import {
   RefreshCw, Plus, Trash2, Users, Building2, CalendarCheck, Tag, Sparkles,
   X, Search, CheckSquare, Square, ChevronLeft, ChevronRight,
   ShieldCheck, AlertTriangle, ArrowLeftRight, Send, Clock, FileText,
+  Eye, Settings, StopCircle,
 } from "lucide-react";
+import { buildPreviewHtml } from "@/lib/email/client-preview";
 
 // ─── 型定義 ───────────────────────────────────────────────
 type ConditionDomain  = { type: "domain";  domains: string[] };
@@ -49,9 +51,12 @@ interface Member {
 interface Campaign {
   id: string;
   subject: string;
+  body?: string;
   status: string;
   scheduled_at: string | null;
   list_id: string | null;
+  header_color?: string;
+  footer_text?: string | null;
   created_at: string;
 }
 
@@ -89,21 +94,101 @@ export default function NewsletterListPage() {
   const [lists, setLists] = useState<NewsletterList[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingList, setEditingList] = useState<NewsletterList | null | "new">(null);
+  const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([]);
+  const [previewModal, setPreviewModal] = useState<{ list: NewsletterList; campaign: Campaign } | null>(null);
+  const [scheduleModal, setScheduleModal] = useState<NewsletterList | null>(null);
+  const [schedCampaignId, setSchedCampaignId] = useState("");
+  const [schedDateTime, setSchedDateTime] = useState("");
+  const [scheduling, setScheduling] = useState(false);
 
   const loadLists = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/newsletter/lists");
-      const data = await res.json();
-      setLists(Array.isArray(data) ? data : []);
+      const [listsRes, campaignsRes] = await Promise.all([
+        fetch("/api/newsletter/lists"),
+        fetch("/api/newsletter/campaigns"),
+      ]);
+      const listsData = await listsRes.json();
+      const campaignsData = await campaignsRes.json();
+      setLists(Array.isArray(listsData) ? listsData : []);
+      setAllCampaigns(Array.isArray(campaignsData) ? campaignsData : []);
     } catch {
-      toast.error("リストの取得に失敗しました");
+      toast.error("データの取得に失敗しました");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => { loadLists(); }, [loadLists]);
+
+  // 配信リストに紐づいたスケジュール済みキャンペーンを返す
+  function scheduledCampaignFor(listId: string): Campaign | undefined {
+    return allCampaigns.find((c) => c.list_id === listId && c.status === "scheduled");
+  }
+
+  // 配信停止: キャンペーンを draft に戻す
+  async function stopDelivery(listId: string) {
+    const campaign = scheduledCampaignFor(listId);
+    if (!campaign) return;
+    if (!confirm(`「${campaign.subject || "（件名なし）"}」の配信予約を取り消しますか？`)) return;
+    try {
+      await fetch(`/api/newsletter/campaigns/${campaign.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "draft", scheduled_at: null, list_id: null }),
+      });
+      toast.success("配信予約を取り消しました");
+      loadLists();
+    } catch {
+      toast.error("取り消しに失敗しました");
+    }
+  }
+
+  // 配信予約モーダルを開く（既存スケジュールをプリセット）
+  function openScheduleModal(list: NewsletterList) {
+    const existing = scheduledCampaignFor(list.id);
+    setSchedCampaignId(existing?.id ?? "");
+    setSchedDateTime(existing?.scheduled_at ? new Date(existing.scheduled_at).toISOString().slice(0, 16) : "");
+    setScheduleModal(list);
+  }
+
+  // 配信予約を保存
+  async function saveSchedule() {
+    if (!scheduleModal || !schedCampaignId) { toast.error("メールを選択してください"); return; }
+    if (!schedDateTime) { toast.error("配信日時を設定してください"); return; }
+    setScheduling(true);
+    try {
+      const utc = new Date(schedDateTime).toISOString();
+      const res = await fetch(`/api/newsletter/campaigns/${schedCampaignId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ list_id: scheduleModal.id, scheduled_at: utc, status: "scheduled" }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("配信予約を設定しました");
+      setScheduleModal(null);
+      loadLists();
+    } catch (e: any) {
+      toast.error(e.message ?? "設定に失敗しました");
+    } finally {
+      setScheduling(false);
+    }
+  }
+
+  // メール確認モーダルを開く（全データを取得してから表示）
+  async function openPreviewModal(list: NewsletterList) {
+    const candidate = scheduledCampaignFor(list.id)
+      ?? allCampaigns.find((c) => c.list_id === list.id)
+      ?? allCampaigns[0];
+    if (!candidate) { toast.error("確認できるメールがありません"); return; }
+    try {
+      const res = await fetch(`/api/newsletter/campaigns/${candidate.id}`);
+      const full = await res.json();
+      setPreviewModal({ list, campaign: { ...candidate, ...full } });
+    } catch {
+      toast.error("メールの取得に失敗しました");
+    }
+  }
 
   async function deleteList(id: string, name: string) {
     if (!confirm(`「${name}」を削除しますか？`)) return;
@@ -150,34 +235,163 @@ export default function NewsletterListPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {lists.map((list) => (
-            <div key={list.id} className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{list.name || "（名称なし）"}</p>
-                  {list.description && (
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{list.description}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    メンバー: <span className="font-medium text-foreground">{list.preview_count.toLocaleString()}</span> 件
-                    　作成: {fmt(list.created_at)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button variant="outline" size="sm" onClick={() => setEditingList(list)}>
-                    編集・メンバー管理
-                  </Button>
+          {lists.map((list) => {
+            const scheduled = scheduledCampaignFor(list.id);
+            return (
+              <div key={list.id} className="rounded-xl border border-border bg-card p-4 space-y-3">
+                {/* 上段: 名前・メタ情報・削除 */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{list.name || "（名称なし）"}</p>
+                    {list.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{list.description}</p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                      <p className="text-xs text-muted-foreground">
+                        メンバー: <span className="font-medium text-foreground">{list.preview_count.toLocaleString()}</span> 件
+                      </p>
+                      {scheduled ? (
+                        <p className="text-xs text-primary flex items-center gap-1">
+                          <Clock className="size-3" />
+                          配信予約: {new Date(scheduled.scheduled_at!).toLocaleString("ja-JP")}
+                          <span className="text-muted-foreground">「{scheduled.subject || "（件名なし）"}」</span>
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
                   <Button
                     variant="ghost" size="sm"
                     onClick={() => deleteList(list.id, list.name)}
-                    className="text-destructive hover:text-destructive"
+                    className="text-muted-foreground hover:text-destructive shrink-0"
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
                 </div>
+
+                {/* 下段: 4ボタン */}
+                <div className="flex flex-wrap gap-1.5 border-t border-border pt-3">
+                  <Button variant="outline" size="sm" onClick={() => setEditingList(list)} className="gap-1.5">
+                    <Settings className="size-3.5" />リスト編集
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => openPreviewModal(list)} className="gap-1.5">
+                    <Eye className="size-3.5" />メール確認
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => openScheduleModal(list)} className="gap-1.5">
+                    <Clock className="size-3.5" />配信予約
+                  </Button>
+                  <Button
+                    variant="outline" size="sm"
+                    onClick={() => stopDelivery(list.id)}
+                    disabled={!scheduled}
+                    className={`gap-1.5 ${scheduled ? "text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5" : "text-muted-foreground"}`}
+                  >
+                    <StopCircle className="size-3.5" />配信停止
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ─── メール確認モーダル ─── */}
+      {previewModal && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-background">
+          <div className="flex items-center justify-between border-b border-border px-6 py-3 shrink-0">
+            <div>
+              <p className="text-sm font-semibold">メール確認 — {previewModal.list.name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                件名: {previewModal.campaign.subject || "（件名なし）"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* キャンペーン切替 */}
+              {allCampaigns.length > 1 && (
+                <select
+                  value={previewModal.campaign.id}
+                  onChange={async (e) => {
+                    const c = allCampaigns.find((c) => c.id === e.target.value);
+                    if (!c) return;
+                    const res = await fetch(`/api/newsletter/campaigns/${c.id}`);
+                    const full = await res.json();
+                    setPreviewModal({ ...previewModal, campaign: { ...c, ...full } });
+                  }}
+                  className="rounded-md border border-input bg-background px-2 py-1 text-xs focus:outline-none"
+                >
+                  {allCampaigns.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.subject || "（件名なし）"} [{c.status}]
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button onClick={() => setPreviewModal(null)} className="rounded p-1.5 text-muted-foreground hover:bg-muted">
+                <X className="size-4" />
+              </button>
+            </div>
+          </div>
+          <iframe
+            srcDoc={buildPreviewHtml(
+              (previewModal.campaign as any).body ?? "",
+              (previewModal.campaign as any).header_color ?? "dark",
+              (previewModal.campaign as any).footer_text ?? null
+            )}
+            title="メールプレビュー"
+            className="flex-1 w-full border-none"
+            sandbox="allow-same-origin"
+          />
+        </div>
+      )}
+
+      {/* ─── 配信予約モーダル ─── */}
+      {scheduleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-background shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div>
+                <h2 className="text-base font-semibold">配信予約</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{scheduleModal.name}</p>
+              </div>
+              <button onClick={() => setScheduleModal(null)} className="rounded p-1.5 text-muted-foreground hover:bg-muted">
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">送信するメール</label>
+                <select
+                  value={schedCampaignId}
+                  onChange={(e) => setSchedCampaignId(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="">-- メールを選択 --</option>
+                  {allCampaigns
+                    .filter((c) => c.status === "draft" || c.status === "scheduled")
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.subject || "（件名なし）"} [{c.status === "scheduled" ? "予約済み" : "下書き"}]
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">配信日時</label>
+                <input
+                  type="datetime-local"
+                  value={schedDateTime}
+                  onChange={(e) => setSchedDateTime(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+                <p className="text-xs text-muted-foreground">設定した日時に GitHub Actions が自動で送信します</p>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={() => setScheduleModal(null)}>キャンセル</Button>
+                <Button size="sm" onClick={saveSchedule} disabled={scheduling || !schedCampaignId || !schedDateTime} className="gap-1.5">
+                  <Clock className="size-3.5" />{scheduling ? "設定中…" : "予約を確定"}
+                </Button>
               </div>
             </div>
-          ))}
+          </div>
         </div>
       )}
     </div>

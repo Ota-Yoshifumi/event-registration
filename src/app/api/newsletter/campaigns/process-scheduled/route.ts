@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
         from: `${FROM_NAME} <${fromEmail}>`,
         to: s.email,
         subject: campaign.subject as string,
-        html: buildHtmlEmail(personalizedBody, unsubscribeUrl, campaign.header_color),
+        html: buildHtmlEmail(personalizedBody, unsubscribeUrl, campaign.header_color, campaign.footer_text),
         text: personalizedBody,
       };
     });

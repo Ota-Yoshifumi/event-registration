@@ -48,13 +48,16 @@ export function buildSeminarVars(seminar: Seminar): Record<string, string> {
 // HTML メール生成
 // ---------------------------------------------------------------------------
 
+const DEFAULT_FOOTER_TEXT =
+  "このメールは WHGC ゲームチェンジャーズ・フォーラム がお送りしています。";
+
 /**
  * プレーンテキストのメール本文から、レスポンシブ HTML メールを生成する。
  * - URL を自動リンク化
  * - 改行を <br> に変換
  * - WHGC ブランドのヘッダー・フッター付き
  */
-export function buildHtmlEmail(text: string, unsubscribeUrl?: string, headerColor?: string): string {
+export function buildHtmlEmail(text: string, unsubscribeUrl?: string, headerColor?: string, footerText?: string | null): string {
   const theme = getTheme(headerColor);
 
   // HTML 特殊文字をエスケープ
@@ -110,7 +113,7 @@ export function buildHtmlEmail(text: string, unsubscribeUrl?: string, headerColo
           <tr>
             <td style="padding:20px 32px;background-color:#fafafa;border-top:1px solid #e4e4e7;">
               <p style="margin:0;color:#71717a;font-size:12px;line-height:1.8;">
-                このメールは WHGC ゲームチェンジャーズ・フォーラム がお送りしています。${unsubscribeSection}<br>
+                ${footerText?.trim() || DEFAULT_FOOTER_TEXT}${unsubscribeSection}<br>
                 ご不明な点は <a href="mailto:info@allianceforum.org" style="color:#71717a;">info@allianceforum.org</a> までお問い合わせください。
               </p>
             </td>

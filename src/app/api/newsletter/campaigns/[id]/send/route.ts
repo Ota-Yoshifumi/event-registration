@@ -46,7 +46,7 @@ export async function POST(
 
     // ── テスト送信 ──────────────────────────────────────────
     if (testEmail) {
-      const html = buildHtmlEmail(campaign.body, undefined, campaign.header_color);
+      const html = buildHtmlEmail(campaign.body, undefined, campaign.header_color, campaign.footer_text);
       const { error } = await resend.emails.send({
         from: `${FROM_NAME} <${fromEmail}>`,
         to: testEmail,
@@ -147,7 +147,7 @@ export async function POST(
         from: `${FROM_NAME} <${fromEmail}>`,
         to: subscriber.email,
         subject: campaign.subject as string,
-        html: buildHtmlEmail(personalizedBody, unsubscribeUrl, campaign.header_color),
+        html: buildHtmlEmail(personalizedBody, unsubscribeUrl, campaign.header_color, campaign.footer_text),
         text: personalizedBody,
       };
     });

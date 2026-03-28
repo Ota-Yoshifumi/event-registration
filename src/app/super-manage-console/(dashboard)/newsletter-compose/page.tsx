@@ -10,12 +10,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  Send, Save, ChevronRight, RefreshCw, X, FlaskConical, Plus, History, FileEdit, Eye,
+  Save, ChevronRight, RefreshCw, X, FlaskConical, Plus, History, FileEdit, Eye, AlignLeft,
 } from "lucide-react";
 import { TENANT_KEYS, TENANT_LABELS } from "@/lib/tenant-config";
 import type { TenantKey } from "@/lib/tenant-config";
 import Link from "next/link";
-import { EMAIL_THEMES, getTheme } from "@/lib/email/themes";
+import { EMAIL_THEMES } from "@/lib/email/themes";
+import { buildPreviewHtml } from "@/lib/email/client-preview";
 
 // ─── 型定義 ──────────────────────────────────────────────────────────────────
 
@@ -68,60 +69,6 @@ function buildSeminarBlock(seminar: Seminar, tenant: TenantKey): string {
     `\n　詳細・お申し込み：${appUrl}/${tenantPath}/seminars/${seminar.id}`,
   ].filter(Boolean);
   return lines.join("\n");
-}
-
-/** クライアントサイドでメールHTMLプレビューを生成する */
-function buildPreviewHtml(text: string, headerColor: string, previewName = "〇〇様"): string {
-  const theme = getTheme(headerColor);
-
-  // {{name}} をプレビュー用サンプルに置換、{{unsubscribe_url}} はサンプルURLに
-  const replaced = text
-    .replace(/\{\{name\}\}/g, previewName)
-    .replace(/\{\{company\}\}/g, "〇〇株式会社")
-    .replace(/\{\{department\}\}/g, "営業部")
-    .replace(/\{\{unsubscribe_url\}\}/g, "#unsubscribe-preview");
-
-  const escaped = replaced.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const withLinks = escaped.replace(
-    /(https?:\/\/[^\s&<>"]+)/g,
-    '<a href="$1" style="color:#6366f1;text-decoration:underline;word-break:break-all;">$1</a>'
-  );
-  const withBreaks = withLinks.replace(/\n/g, "<br>\n");
-
-  return `<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin:0;padding:0;background-color:${theme.bg};font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN',Meiryo,'Yu Gothic',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${theme.bg};padding:32px 16px;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-          <tr>
-            <td style="background-color:${theme.header};padding:20px 32px;">
-              <p style="margin:0;color:#ffffff;font-size:15px;font-weight:600;letter-spacing:0.04em;">WHGC ゲームチェンジャーズ・フォーラム</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:32px;color:#18181b;font-size:15px;line-height:1.9;">${withBreaks}</td>
-          </tr>
-          <tr>
-            <td style="padding:20px 32px;background-color:#fafafa;border-top:1px solid #e4e4e7;">
-              <p style="margin:0;color:#71717a;font-size:12px;line-height:1.8;">
-                このメールは WHGC ゲームチェンジャーズ・フォーラム がお送りしています。<br>
-                配信停止をご希望の方は <a href="#unsubscribe-preview" style="color:#71717a;text-decoration:underline;">こちら</a>より停止手続きをお願いいたします。<br>
-                ご不明な点は <a href="mailto:info@allianceforum.org" style="color:#71717a;">info@allianceforum.org</a> までお問い合わせください。
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -304,6 +251,8 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
   const [body, setBody] = useState("");
   const [recipientTags, setRecipientTags] = useState<string[]>([]);
   const [headerColor, setHeaderColor] = useState("dark");
+  const [footerText, setFooterText] = useState("");
+  const [showFooterEdit, setShowFooterEdit] = useState(false);
 
   const [selectedTenant, setSelectedTenant] = useState<TenantKey>("whgc-seminars");
   const [seminars, setSeminars] = useState<Seminar[]>([]);
@@ -312,19 +261,8 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [testEmail, setTestEmail] = useState("");
-  const [showSendModal, setShowSendModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("");
-
-  interface SendProgress {
-    total: number;
-    sent: number;
-    failed: number;
-    processed: number;
-    done: boolean;
-    error?: string;
-  }
-  const [progress, setProgress] = useState<SendProgress | null>(null);
 
   // 既存キャンペーン読み込み
   useEffect(() => {
@@ -335,6 +273,7 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
         setBody(d.body ?? "");
         setRecipientTags(d.recipient_tags ?? []);
         setHeaderColor(d.header_color ?? "dark");
+        setFooterText(d.footer_text ?? "");
       })
       .catch(() => toast.error("キャンペーンの読み込みに失敗しました"));
   }, [campaignId]);
@@ -343,10 +282,10 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
   useEffect(() => {
     if (!showPreview) return;
     const timer = setTimeout(() => {
-      setPreviewHtml(buildPreviewHtml(body, headerColor));
+      setPreviewHtml(buildPreviewHtml(body, headerColor, footerText || null));
     }, 250);
     return () => clearTimeout(timer);
-  }, [body, headerColor, showPreview]);
+  }, [body, headerColor, footerText, showPreview]);
 
   // セミナー取得
   const loadSeminars = useCallback(async (tenant: TenantKey) => {
@@ -395,7 +334,7 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
       await fetch(`/api/newsletter/campaigns/${campaignId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, body, recipient_tags: recipientTags, header_color: headerColor }),
+        body: JSON.stringify({ subject, body, recipient_tags: recipientTags, header_color: headerColor, footer_text: footerText || null }),
       });
       toast.success("保存しました");
     } catch {
@@ -426,51 +365,8 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
     }
   }
 
-  async function sendCampaign() {
-    setSending(true);
-    setProgress(null);
-    try {
-      await fetch(`/api/newsletter/campaigns/${campaignId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, body, recipient_tags: recipientTags, header_color: headerColor }),
-      });
-
-      let offset = 0;
-      let totalSent = 0;
-      let totalFailed = 0;
-      let totalCount = 0;
-
-      while (true) {
-        const res = await fetch(`/api/newsletter/campaigns/${campaignId}/send`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ offset, batch_size: 100 }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-
-        totalSent += data.sent;
-        totalFailed += data.failed;
-        totalCount = data.total;
-        offset = data.next_offset;
-
-        setProgress({ total: totalCount, sent: totalSent, failed: totalFailed, processed: offset, done: !data.has_more });
-        if (!data.has_more) break;
-      }
-
-      toast.success(`配信完了: ${totalSent}件送信 / ${totalFailed}件失敗`);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "送信に失敗しました";
-      setProgress((prev) => prev ? { ...prev, error: msg, done: true } : null);
-      toast.error(msg);
-    } finally {
-      setSending(false);
-    }
-  }
-
   function openPreview() {
-    setPreviewHtml(buildPreviewHtml(body, headerColor));
+    setPreviewHtml(buildPreviewHtml(body, headerColor, footerText || null));
     setShowPreview(true);
   }
 
@@ -506,9 +402,6 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
             </Button>
             <Button variant="outline" size="sm" onClick={saveDraft} disabled={saving} className="gap-1.5">
               <Save className="size-3.5" />{saving ? "保存中…" : "下書き保存"}
-            </Button>
-            <Button size="sm" onClick={() => setShowSendModal(true)} className="gap-1.5">
-              <Send className="size-3.5" />今すぐ配信
             </Button>
           </div>
         </div>
@@ -602,6 +495,37 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
             />
           </div>
 
+          {/* フッター編集 */}
+          <div className="rounded-lg border border-border bg-muted/20">
+            <button
+              onClick={() => setShowFooterEdit((v) => !v)}
+              className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/30 transition-colors rounded-lg"
+            >
+              <span className="flex items-center gap-2">
+                <AlignLeft className="size-3.5 text-muted-foreground" />
+                フッター編集
+              </span>
+              <span className="text-xs text-muted-foreground">{showFooterEdit ? "▲ 閉じる" : "▼ 開く"}</span>
+            </button>
+            {showFooterEdit && (
+              <div className="px-4 pb-4 space-y-2 border-t border-border pt-3">
+                <p className="text-xs text-muted-foreground">
+                  フッターの1行目テキストを変更できます。空白の場合はデフォルトが使われます。
+                </p>
+                <Textarea
+                  value={footerText}
+                  onChange={(e) => setFooterText(e.target.value)}
+                  placeholder="このメールは WHGC ゲームチェンジャーズ・フォーラム がお送りしています。"
+                  className="text-sm min-h-[60px] resize-none"
+                />
+                <div className="rounded-md border border-border bg-background/50 px-3 py-2 text-xs text-muted-foreground space-y-0.5">
+                  <p>（自動付与）配信停止をご希望の方は「こちら」より停止手続きをお願いいたします。</p>
+                  <p>（固定）ご不明な点は info@allianceforum.org までお問い合わせください。</p>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* テスト送信 */}
           <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
             <p className="text-sm font-medium">テスト送信</p>
@@ -681,108 +605,6 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
         </aside>
       </div>
 
-      {/* 送信確認・進捗モーダル */}
-      {showSendModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={(e) => {
-            if (!sending && progress?.done !== false && e.target === e.currentTarget) {
-              setShowSendModal(false);
-              setProgress(null);
-            }
-          }}
-        >
-          <div className="w-full max-w-md rounded-xl border border-border bg-background shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <h2 className="text-base font-semibold">
-                {progress?.done ? "配信完了" : sending ? "配信中…" : "配信の確認"}
-              </h2>
-              {!sending && (
-                <button
-                  onClick={() => { setShowSendModal(false); setProgress(null); }}
-                  className="rounded p-1.5 text-muted-foreground hover:bg-muted"
-                >
-                  <X className="size-4" />
-                </button>
-              )}
-            </div>
-            <div className="p-6 space-y-4">
-              {!sending && !progress && (
-                <>
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                    <p className="text-sm font-medium text-amber-800">送信前に確認してください</p>
-                    <ul className="mt-2 space-y-1 text-sm text-amber-700 list-disc list-inside">
-                      <li>件名: {subject || "（未入力）"}</li>
-                      <li>送信対象: {recipientTags.length === 0 ? "全購読者" : `タグ: ${recipientTags.join("・")}`}</li>
-                    </ul>
-                    <p className="mt-2 text-xs text-amber-600">※ 送信後は取り消しできません。</p>
-                  </div>
-                  <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2 text-sm text-muted-foreground">
-                    <p className="font-medium text-foreground">バッチ送信について</p>
-                    <p>メールは <strong>100件ずつのバッチ</strong> に分けて順番に送信されます。</p>
-                    <p className="text-amber-700 font-medium">⚠ 送信完了まで、このブラウザタブを閉じないでください。</p>
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setShowSendModal(false)}>キャンセル</Button>
-                    <Button size="sm" onClick={sendCampaign} className="gap-1.5">
-                      <Send className="size-3.5" />配信実行
-                    </Button>
-                  </div>
-                </>
-              )}
-
-              {(sending || (progress && !progress.done)) && progress && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">送信中…</span>
-                      <span className="font-medium">
-                        {progress.processed.toLocaleString()} / {progress.total.toLocaleString()} 件
-                      </span>
-                    </div>
-                    <div className="h-3 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all duration-300"
-                        style={{ width: `${progress.total > 0 ? Math.round((progress.processed / progress.total) * 100) : 0}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>成功: {progress.sent.toLocaleString()} 件</span>
-                      {progress.failed > 0 && <span className="text-red-500">失敗: {progress.failed.toLocaleString()} 件</span>}
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground text-center">送信中はこのウィンドウを閉じないでください</p>
-                </div>
-              )}
-
-              {progress?.done && (
-                <div className="space-y-4">
-                  {progress.error ? (
-                    <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-1">
-                      <p className="font-medium text-red-700">エラーが発生しました</p>
-                      <p className="text-sm text-red-600">{progress.error}</p>
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 space-y-1">
-                      <p className="font-medium text-emerald-700">配信完了 ✓</p>
-                      <p className="text-sm text-emerald-600">送信成功: <strong>{progress.sent.toLocaleString()}</strong> 件</p>
-                      {progress.failed > 0 && (
-                        <p className="text-sm text-red-500">失敗: <strong>{progress.failed.toLocaleString()}</strong> 件</p>
-                      )}
-                    </div>
-                  )}
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => { setShowSendModal(false); setProgress(null); }}>閉じる</Button>
-                    <Button size="sm" onClick={() => { setShowSendModal(false); setProgress(null); router.push("/super-manage-console/newsletter-history"); }}>
-                      配信履歴を確認
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
 
     {/* ─── HTMLプレビューモーダル（フルスクリーン、左:編集 / 右:プレビュー） ─── */}
