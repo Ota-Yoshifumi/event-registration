@@ -144,10 +144,12 @@ export default function NewsletterListPage() {
     }
   }
 
-  // 配信予約モーダルを開く（既存スケジュールをプリセット）
+  // 配信予約モーダルを開く（既存スケジュール or 最初の下書きを自動選択）
   function openScheduleModal(list: NewsletterList) {
     const existing = scheduledCampaignFor(list.id);
-    setSchedCampaignId(existing?.id ?? "");
+    const fallback = allCampaigns.find((c) => c.status === "draft" || c.status === "scheduled");
+    const picked = existing ?? fallback ?? null;
+    setSchedCampaignId(picked?.id ?? "");
     setSchedDateTime(existing?.scheduled_at ? new Date(existing.scheduled_at).toISOString().slice(0, 16) : "");
     setScheduleModal(list);
   }
@@ -357,23 +359,18 @@ export default function NewsletterListPage() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">送信するメール</label>
-                <select
-                  value={schedCampaignId}
-                  onChange={(e) => setSchedCampaignId(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="">-- メールを選択 --</option>
-                  {allCampaigns
-                    .filter((c) => c.status === "draft" || c.status === "scheduled")
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.subject || "（件名なし）"} [{c.status === "scheduled" ? "予約済み" : "下書き"}]
-                      </option>
-                    ))}
-                </select>
-              </div>
+              {schedCampaignId ? (
+                <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">送信メール</p>
+                  <p className="text-sm font-medium mt-0.5">
+                    {allCampaigns.find((c) => c.id === schedCampaignId)?.subject || "（件名なし）"}
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                  <p className="text-xs text-amber-700">送信するメールがありません。メール作成・編集で下書きを作成してください。</p>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">配信日時</label>
                 <input
