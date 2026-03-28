@@ -113,6 +113,7 @@ export default function NewsletterHistoryPage() {
   const sent       = campaigns.filter((c) => c.status === "sent");
 
   return (
+    <>
     <div className="p-6 space-y-8 max-w-4xl">
 
       {/* ページヘッダー */}
@@ -468,5 +469,6 @@ export default function NewsletterHistoryPage() {
         </div>
       </div>
     )}
+    </>
   );
 }
