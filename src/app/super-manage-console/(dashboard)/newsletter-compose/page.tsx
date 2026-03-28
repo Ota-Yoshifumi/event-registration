@@ -9,10 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Send, Save, ChevronRight, RefreshCw, X, FlaskConical, Plus, History, FileEdit } from "lucide-react";
+import {
+  Send, Save, ChevronRight, RefreshCw, X, FlaskConical, Plus, History, FileEdit, Eye,
+} from "lucide-react";
 import { TENANT_KEYS, TENANT_LABELS } from "@/lib/tenant-config";
 import type { TenantKey } from "@/lib/tenant-config";
 import Link from "next/link";
+import { EMAIL_THEMES, getTheme } from "@/lib/email/themes";
+
+// ─── 型定義 ──────────────────────────────────────────────────────────────────
 
 interface Seminar {
   id: string;
@@ -63,6 +68,61 @@ function buildSeminarBlock(seminar: Seminar, tenant: TenantKey): string {
     `\n　詳細・お申し込み：${appUrl}/${tenantPath}/seminars/${seminar.id}`,
   ].filter(Boolean);
   return lines.join("\n");
+}
+
+/** クライアントサイドでメールHTMLプレビューを生成する */
+function buildPreviewHtml(text: string, headerColor: string, previewName = "〇〇様"): string {
+  const theme = getTheme(headerColor);
+
+  // {{name}} をプレビュー用サンプルに置換、{{unsubscribe_url}} はサンプルURLに
+  const replaced = text
+    .replace(/\{\{name\}\}/g, previewName)
+    .replace(/\{\{unsubscribe_url\}\}/g, "#unsubscribe-preview");
+
+  const escaped = replaced.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const withLinks = escaped.replace(
+    /(https?:\/\/[^\s&<>"]+)/g,
+    '<a href="$1" style="color:#6366f1;text-decoration:underline;word-break:break-all;">$1</a>'
+  );
+  const withBreaks = withLinks.replace(/\n/g, "<br>\n");
+
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:${theme.bg};font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN',Meiryo,'Yu Gothic',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${theme.bg};padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+          <tr>
+            <td style="background-color:${theme.header};padding:20px 32px;">
+              <p style="margin:0;color:#ffffff;font-size:15px;font-weight:600;letter-spacing:0.04em;">WHGC ゲームチェンジャーズ・フォーラム</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;color:#18181b;font-size:15px;line-height:1.9;">${withBreaks}</td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px;background-color:#fafafa;border-top:1px solid #e4e4e7;">
+              <p style="margin:0;color:#71717a;font-size:12px;line-height:1.8;">
+                WHGC ゲームチェンジャーズ・フォーラム事務局<br>
+                ご不明な点は <a href="mailto:info@allianceforum.org" style="color:#71717a;">info@allianceforum.org</a> までお問い合わせください。
+              </p>
+              <p style="margin:16px 0 0;padding-top:16px;border-top:1px solid #e4e4e7;color:#a1a1aa;font-size:11px;line-height:1.8;">
+                このメールはご登録いただいたメールアドレスに配信しています。<br>
+                配信停止をご希望の場合は <a href="#unsubscribe-preview" style="color:#a1a1aa;text-decoration:underline;">こちら</a> をクリックしてください。
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -244,17 +304,18 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [recipientTags, setRecipientTags] = useState<string[]>([]);
+  const [headerColor, setHeaderColor] = useState("dark");
 
   const [selectedTenant, setSelectedTenant] = useState<TenantKey>("whgc-seminars");
   const [seminars, setSeminars] = useState<Seminar[]>([]);
   const [loadingSeminars, setLoadingSeminars] = useState(false);
 
-  const [scheduledAt, setScheduledAt] = useState("");
-
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [showSendModal, setShowSendModal] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState("");
 
   interface SendProgress {
     total: number;
@@ -274,15 +335,19 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
         setSubject(d.subject ?? "");
         setBody(d.body ?? "");
         setRecipientTags(d.recipient_tags ?? []);
-        if (d.scheduled_at) {
-          const dt = new Date(d.scheduled_at);
-          const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000)
-            .toISOString().slice(0, 16);
-          setScheduledAt(local);
-        }
+        setHeaderColor(d.header_color ?? "dark");
       })
       .catch(() => toast.error("キャンペーンの読み込みに失敗しました"));
   }, [campaignId]);
+
+  // プレビューHTMLをデバウンス更新
+  useEffect(() => {
+    if (!showPreview) return;
+    const timer = setTimeout(() => {
+      setPreviewHtml(buildPreviewHtml(body, headerColor));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [body, headerColor, showPreview]);
 
   // セミナー取得
   const loadSeminars = useCallback(async (tenant: TenantKey) => {
@@ -302,21 +367,26 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
     loadSeminars(selectedTenant);
   }, [selectedTenant, loadSeminars]);
 
-  function insertSeminar(seminar: Seminar) {
-    const block = "\n\n" + buildSeminarBlock(seminar, selectedTenant) + "\n";
+  // テキスト挿入ヘルパー（カーソル位置に挿入）
+  function insertText(text: string) {
     const el = textareaRef.current;
     if (el) {
       const start = el.selectionStart;
       const end = el.selectionEnd;
-      const newBody = body.substring(0, start) + block + body.substring(end);
+      const newBody = body.substring(0, start) + text + body.substring(end);
       setBody(newBody);
       setTimeout(() => {
-        el.selectionStart = el.selectionEnd = start + block.length;
+        el.selectionStart = el.selectionEnd = start + text.length;
         el.focus();
       }, 0);
     } else {
-      setBody((prev) => prev + block);
+      setBody((prev) => prev + text);
     }
+  }
+
+  function insertSeminar(seminar: Seminar) {
+    const block = "\n\n" + buildSeminarBlock(seminar, selectedTenant) + "\n";
+    insertText(block);
     toast.success(`「${seminar.title}」を挿入しました`);
   }
 
@@ -326,7 +396,7 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
       await fetch(`/api/newsletter/campaigns/${campaignId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, body, recipient_tags: recipientTags }),
+        body: JSON.stringify({ subject, body, recipient_tags: recipientTags, header_color: headerColor }),
       });
       toast.success("保存しました");
     } catch {
@@ -336,27 +406,10 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
     }
   }
 
-  async function saveScheduled() {
-    if (!scheduledAt) { toast.error("配信日時を選択してください"); return; }
-    if (!subject) { toast.error("件名を入力してください"); return; }
-    setSaving(true);
-    try {
-      const scheduledIso = new Date(scheduledAt).toISOString();
-      await fetch(`/api/newsletter/campaigns/${campaignId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, body, recipient_tags: recipientTags, scheduled_at: scheduledIso, status: "scheduled" }),
-      });
-      toast.success("配信予約を登録しました");
-    } catch {
-      toast.error("予約登録に失敗しました");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function sendTest() {
     if (!testEmail) { toast.error("テスト送信先メールアドレスを入力してください"); return; }
+    // まず保存してからテスト送信
+    await saveDraft();
     setSending(true);
     try {
       const res = await fetch(`/api/newsletter/campaigns/${campaignId}/send`, {
@@ -381,7 +434,7 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
       await fetch(`/api/newsletter/campaigns/${campaignId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, body, recipient_tags: recipientTags }),
+        body: JSON.stringify({ subject, body, recipient_tags: recipientTags, header_color: headerColor }),
       });
 
       let offset = 0;
@@ -417,7 +470,19 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
     }
   }
 
+  function openPreview() {
+    setPreviewHtml(buildPreviewHtml(body, headerColor));
+    setShowPreview(true);
+  }
+
+  // 挿入可能な変数バッジの定義
+  const INSERT_VARS = [
+    { label: "{{name}}", text: "{{name}}", desc: "受信者名に自動置換" },
+    { label: "{{unsubscribe_url}}", text: "{{unsubscribe_url}}", desc: "配信停止URL（フッター内での使用推奨）" },
+  ];
+
   return (
+    <>
     <div className="flex h-full min-h-screen flex-col">
       {/* ヘッダー */}
       <div className="border-b border-border bg-background px-6 py-4">
@@ -436,6 +501,9 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
             <p className="admin-description mt-0.5 text-xs">ID: {campaignId.slice(0, 8)}…</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={openPreview} className="gap-1.5">
+              <Eye className="size-3.5" />プレビュー
+            </Button>
             <Button variant="outline" size="sm" onClick={saveDraft} disabled={saving} className="gap-1.5">
               <Save className="size-3.5" />{saving ? "保存中…" : "下書き保存"}
             </Button>
@@ -449,6 +517,7 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
       {/* メインレイアウト */}
       <div className="flex flex-1 overflow-hidden">
         <div className="flex flex-1 flex-col gap-4 overflow-auto p-6">
+
           {/* 件名 */}
           <div className="space-y-1.5">
             <Label htmlFor="subject">件名</Label>
@@ -461,10 +530,34 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
             />
           </div>
 
-          {/* 送信対象 */}
+          {/* ヘッダーカラー選択 */}
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">ヘッダーカラー</Label>
+            <div className="flex flex-wrap gap-2">
+              {EMAIL_THEMES.map((theme) => (
+                <button
+                  key={theme.id}
+                  onClick={() => setHeaderColor(theme.id)}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border transition-all ${
+                    headerColor === theme.id
+                      ? "border-primary ring-2 ring-primary/20 bg-primary/5"
+                      : "border-border bg-background hover:border-muted-foreground"
+                  }`}
+                >
+                  <span
+                    className="size-3.5 rounded-full shrink-0 border border-white/20"
+                    style={{ backgroundColor: theme.header }}
+                  />
+                  {theme.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 送信対象バナー */}
           <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3">
             <p className="text-xs text-muted-foreground">
-              送信対象の設定は{" "}
+              送信対象の設定・配信予約は{" "}
               <Link href="/super-manage-console/newsletter-list" className="text-primary underline hover:no-underline">
                 リスト設定・配信
               </Link>{" "}
@@ -472,40 +565,33 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
             </p>
           </div>
 
-          {/* 配信予約 */}
-          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-            <p className="text-sm font-medium">配信予約</p>
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="space-y-1.5 flex-1 min-w-48">
-                <Label htmlFor="scheduled-at" className="text-xs text-muted-foreground">配信日時（空欄 = 予約なし）</Label>
-                <input
-                  id="scheduled-at"
-                  type="datetime-local"
-                  value={scheduledAt}
-                  onChange={(e) => setScheduledAt(e.target.value)}
-                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                />
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={saving || !scheduledAt}
-                onClick={saveScheduled}
-                className="gap-1.5 shrink-0"
-              >
-                <Save className="size-3.5" />予約登録
-              </Button>
-            </div>
-            {scheduledAt && (
-              <p className="text-xs text-muted-foreground">
-                {new Date(scheduledAt).toLocaleString("ja-JP")} に自動配信されます（GitHub Actions が毎日 10:00 JST に処理）
-              </p>
-            )}
-          </div>
-
           {/* 本文 */}
           <div className="flex flex-1 flex-col space-y-1.5">
-            <Label htmlFor="body">本文</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="body">本文</Label>
+              <button
+                onClick={openPreview}
+                className="flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                <Eye className="size-3" />HTMLプレビュー
+              </button>
+            </div>
+
+            {/* 挿入バッジ */}
+            <div className="flex flex-wrap gap-1.5">
+              <span className="text-xs text-muted-foreground self-center">挿入:</span>
+              {INSERT_VARS.map((v) => (
+                <button
+                  key={v.text}
+                  onClick={() => insertText(v.text)}
+                  title={v.desc}
+                  className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs font-mono text-primary hover:bg-primary/15 transition-colors"
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+
             <Textarea
               id="body"
               ref={textareaRef}
@@ -531,7 +617,7 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
                 <FlaskConical className="size-3.5" />テスト送信
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">件名に [テスト] が付いて送信されます。</p>
+            <p className="text-xs text-muted-foreground">件名に [テスト] が付いて送信されます。保存してから送信します。</p>
           </div>
         </div>
 
@@ -698,6 +784,98 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
         </div>
       )}
     </div>
+
+    {/* ─── HTMLプレビューモーダル（フルスクリーン、左:編集 / 右:プレビュー） ─── */}
+    {showPreview && (
+      <div className="fixed inset-0 z-50 flex flex-col bg-background">
+        {/* ヘッダー */}
+        <div className="flex items-center justify-between border-b border-border bg-background px-6 py-3 shrink-0">
+          <div className="flex items-center gap-3">
+            <Eye className="size-4 text-primary" />
+            <span className="text-sm font-semibold">HTMLプレビュー</span>
+            <span className="text-xs text-muted-foreground">左で編集すると右のプレビューがリアルタイムで更新されます</span>
+          </div>
+          <button
+            onClick={() => setShowPreview(false)}
+            className="rounded p-1.5 text-muted-foreground hover:bg-muted"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* 分割ビュー */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* 左: 編集エリア */}
+          <div className="w-1/2 flex flex-col border-r border-border bg-background">
+            <div className="border-b border-border px-4 py-2 flex items-center justify-between shrink-0">
+              <span className="text-xs font-medium text-muted-foreground">テキスト編集</span>
+              {/* テーマ選択もプレビュー内で変更可能 */}
+              <div className="flex gap-1">
+                {EMAIL_THEMES.map((theme) => (
+                  <button
+                    key={theme.id}
+                    onClick={() => setHeaderColor(theme.id)}
+                    title={theme.label}
+                    className={`size-5 rounded-full border-2 transition-all ${
+                      headerColor === theme.id ? "border-primary scale-110" : "border-transparent hover:border-muted-foreground"
+                    }`}
+                    style={{ backgroundColor: theme.header }}
+                  />
+                ))}
+              </div>
+            </div>
+            <Textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              className="flex-1 font-mono text-sm leading-relaxed resize-none border-none rounded-none focus-visible:ring-0"
+              placeholder="本文を入力してください"
+            />
+            <div className="border-t border-border px-4 py-2 flex items-center gap-2 shrink-0 bg-muted/20">
+              <span className="text-xs text-muted-foreground">挿入:</span>
+              {INSERT_VARS.map((v) => (
+                <button
+                  key={v.text}
+                  onClick={() => setBody((prev) => prev + v.text)}
+                  title={v.desc}
+                  className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-xs font-mono text-primary hover:bg-primary/15 transition-colors"
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 右: HTMLプレビュー */}
+          <div className="w-1/2 flex flex-col overflow-hidden bg-gray-100">
+            <div className="border-b border-border px-4 py-2 bg-white shrink-0">
+              <span className="text-xs font-medium text-muted-foreground">メールプレビュー（サンプル表示）</span>
+            </div>
+            <iframe
+              srcDoc={previewHtml}
+              title="メールHTMLプレビュー"
+              className="flex-1 w-full border-none"
+              sandbox="allow-same-origin"
+            />
+          </div>
+        </div>
+
+        {/* フッター */}
+        <div className="border-t border-border bg-background px-6 py-3 flex items-center justify-between shrink-0">
+          <p className="text-xs text-muted-foreground">
+            ※ プレビューでは {"{{name}}"} → 「〇〇様」に置換されています
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowPreview(false)}>
+              <X className="size-3.5 mr-1" />閉じる
+            </Button>
+            <Button size="sm" onClick={async () => { setShowPreview(false); await saveDraft(); }} className="gap-1.5">
+              <Save className="size-3.5" />保存して閉じる
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 

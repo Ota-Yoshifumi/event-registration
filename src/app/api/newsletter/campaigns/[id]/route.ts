@@ -40,7 +40,7 @@ export async function PUT(
   const { id } = await params;
   try {
     const body = await request.json();
-    const { subject, body: emailBody, recipient_tags, scheduled_at, status } = body;
+    const { subject, body: emailBody, recipient_tags, scheduled_at, status, header_color } = body;
 
     const db = await getD1();
     const now = new Date().toISOString();
@@ -51,12 +51,14 @@ export async function PUT(
     const setClauses = [
       "subject = ?", "body = ?", "recipient_tags = ?", "updated_at = ?",
       "scheduled_at = ?",
+      "header_color = ?",
       ...(newStatus ? ["status = ?"] : []),
     ].join(", ");
 
     const bindValues = [
       subject, emailBody, JSON.stringify(recipient_tags ?? []), now,
       scheduled_at ?? null,
+      header_color ?? "dark",
       ...(newStatus ? [newStatus] : []),
       id,
     ];
