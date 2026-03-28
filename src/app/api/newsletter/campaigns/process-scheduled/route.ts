@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   // 送信対象取得
   let totalCount = 0;
-  let subscribers: { id: string; email: string; name: string }[] = [];
+  let subscribers: { id: string; email: string; name: string; company: string; department: string }[] = [];
 
   if (recipientTags.length === 0) {
     const countRow = await db.prepare(
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     totalCount = countRow?.cnt ?? 0;
 
     const rows = await db.prepare(
-      `SELECT id, email, name FROM newsletter_subscribers
+      `SELECT id, email, name, company, department FROM newsletter_subscribers
        WHERE status = 'active' ORDER BY created_at ASC LIMIT ? OFFSET ?`
     ).bind(BATCH_SIZE, offset).all() as any;
     subscribers = rows.results ?? [];
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     totalCount = countRow?.cnt ?? 0;
 
     const rows = await db.prepare(
-      `SELECT DISTINCT s.id, s.email, s.name
+      `SELECT DISTINCT s.id, s.email, s.name, s.company, s.department
        FROM newsletter_subscribers s
        JOIN newsletter_tags t ON s.id = t.subscriber_id
        WHERE s.status = 'active' AND t.tag IN (${placeholders})
@@ -99,6 +99,8 @@ export async function POST(request: NextRequest) {
       const unsubscribeUrl = `${appUrl}/unsubscribe?id=${s.id}`;
       const personalizedBody = (campaign.body as string)
         .replace(/\{\{name\}\}/g, s.name || "")
+        .replace(/\{\{company\}\}/g, s.company || "")
+        .replace(/\{\{department\}\}/g, s.department || "")
         .replace(/\{\{unsubscribe_url\}\}/g, unsubscribeUrl);
       return {
         from: `${FROM_NAME} <${fromEmail}>`,
