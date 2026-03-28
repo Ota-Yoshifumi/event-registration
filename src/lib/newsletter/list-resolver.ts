@@ -21,6 +21,73 @@ interface D1PreparedStatement {
   run(): Promise<unknown>;
 }
 
+/**
+ * 条件を解決して一致する subscriber_id の配列を返す。
+ * 条件なしの場合は全 active 購読者の ID を返す。
+ */
+export async function resolveConditionIds(
+  db: D1Database,
+  conditions: ListCondition[],
+): Promise<string[]> {
+  if (!conditions || conditions.length === 0) {
+    const rows = await db.prepare(
+      `SELECT id FROM newsletter_subscribers WHERE status = 'active'`
+    ).all() as any;
+    return (rows.results ?? []).map((r: any) => r.id);
+  }
+
+  let candidateIds: Set<string> | null = null as Set<string> | null;
+
+  for (const cond of conditions) {
+    let ids: string[] = [];
+
+    if (cond.type === "domain") {
+      if (!cond.domains || cond.domains.length === 0) continue;
+      const likeExprs = cond.domains.map(() => `email LIKE ?`).join(" OR ");
+      const binds = cond.domains.map((d) => `%@${d}`);
+      const rows = await db.prepare(
+        `SELECT id FROM newsletter_subscribers WHERE status = 'active' AND (${likeExprs})`
+      ).bind(...binds).all() as any;
+      ids = (rows.results ?? []).map((r: any) => r.id);
+
+    } else if (cond.type === "event") {
+      if (!cond.seminar_id) continue;
+      const attendanceClause = cond.attendance_type === "attended"
+        ? `AND r.post_survey_completed = 1` : "";
+      const rows = await db.prepare(
+        `SELECT DISTINCT s.id
+         FROM newsletter_subscribers s
+         JOIN registrations r ON r.email = s.email
+         WHERE s.status = 'active'
+           AND r.seminar_id = ?
+           AND r.status = 'confirmed'
+           ${attendanceClause}`
+      ).bind(cond.seminar_id).all() as any;
+      ids = (rows.results ?? []).map((r: any) => r.id);
+
+    } else if (cond.type === "keyword") {
+      if (!cond.keywords || cond.keywords.length === 0) continue;
+      const field = ["department", "company", "name"].includes(cond.field) ? cond.field : "department";
+      const likeExprs = cond.keywords.map(() => `${field} LIKE ?`).join(" OR ");
+      const binds = cond.keywords.map((k) => `%${k}%`);
+      const rows = await db.prepare(
+        `SELECT id FROM newsletter_subscribers WHERE status = 'active' AND (${likeExprs})`
+      ).bind(...binds).all() as any;
+      ids = (rows.results ?? []).map((r: any) => r.id);
+    }
+
+    const idSet = new Set(ids);
+    if (candidateIds === null) {
+      candidateIds = idSet;
+    } else {
+      const existing = candidateIds;
+      candidateIds = new Set([...existing].filter((id) => idSet.has(id)));
+    }
+  }
+
+  return candidateIds === null ? [] : [...candidateIds];
+}
+
 export async function resolveListConditions(
   db: D1Database,
   conditions: ListCondition[],
