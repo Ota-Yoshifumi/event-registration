@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Search, Plus, Upload, RefreshCw, Trash2, Pencil, X, Check } from "lucide-react";
+import { Search, Plus, Upload, RefreshCw, Trash2, Pencil, X, Check, ShieldCheck, ChevronDown, ChevronUp, AlertTriangle, Sparkles, ArrowLeftRight } from "lucide-react";
 
 interface Subscriber {
   id: string;
@@ -23,6 +23,19 @@ interface Subscriber {
 }
 
 interface TagCount { tag: string; count: number; }
+
+interface DuplicateName {
+  name: string;
+  count: number;
+  subscribers: { id: string; email: string; company: string; department: string; created_at: string; status: string }[];
+}
+interface ReversedName {
+  id: string;
+  email: string;
+  current_name: string;
+  suggested_name: string;
+  reason: string;
+}
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   active:       { label: "有効",     color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
@@ -65,6 +78,12 @@ export default function NewsletterPage() {
   // 削除確認
   const [deleteTarget, setDeleteTarget] = useState<Subscriber | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // 品質チェック
+  const [showQuality, setShowQuality] = useState(false);
+  const [qualityLoading, setQualityLoading] = useState(false);
+  const [qualityResult, setQualityResult] = useState<{ duplicate_names: DuplicateName[]; reversed_names: ReversedName[] } | null>(null);
+  const [applyingFix, setApplyingFix] = useState<string | null>(null);
 
 
   const LIMIT = 50;
@@ -192,6 +211,50 @@ export default function NewsletterPage() {
     finally { setImporting(false); }
   }
 
+  // 品質チェック実行
+  async function runQualityCheck() {
+    setQualityLoading(true);
+    setQualityResult(null);
+    try {
+      const res = await fetch("/api/newsletter/subscribers/quality-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ checks: ["duplicates", "reversed_names"] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setQualityResult(data);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "品質チェックに失敗しました");
+    } finally {
+      setQualityLoading(false);
+    }
+  }
+
+  // 名前の修正を適用
+  async function applyNameFix(id: string, newName: string) {
+    setApplyingFix(id);
+    try {
+      const res = await fetch(`/api/newsletter/subscribers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("名前を修正しました");
+      // 結果から該当を除去
+      setQualityResult((prev) => prev ? {
+        ...prev,
+        reversed_names: prev.reversed_names.filter((r) => r.id !== id),
+      } : null);
+      load(page);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "修正に失敗しました");
+    } finally {
+      setApplyingFix(null);
+    }
+  }
+
   const totalPages = Math.ceil(total / LIMIT);
 
   return (
@@ -207,6 +270,15 @@ export default function NewsletterPage() {
             <Button variant="outline" size="sm" onClick={() => load(page)} className="gap-1.5">
               <RefreshCw className="size-3.5" />更新
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setShowQuality((v) => !v); if (!showQuality && !qualityResult) runQualityCheck(); }}
+              className="gap-1.5"
+            >
+              <ShieldCheck className="size-3.5" />品質チェック
+              {showQuality ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setShowImport(true)} className="gap-1.5">
               <Upload className="size-3.5" />CSVインポート
             </Button>
@@ -215,6 +287,155 @@ export default function NewsletterPage() {
             </Button>
           </div>
         </div>
+
+        {/* ─── 品質チェックパネル ─── */}
+        {showQuality && (
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/20">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="size-4 text-primary" />
+                <span className="text-sm font-semibold">データ品質チェック</span>
+                <span className="text-xs text-muted-foreground">AI によるデータ問題の検出</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={runQualityCheck} disabled={qualityLoading} className="gap-1.5">
+                <Sparkles className="size-3.5" />{qualityLoading ? "AI 分析中…" : "再チェック"}
+              </Button>
+            </div>
+
+            {qualityLoading && (
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                <RefreshCw className="size-4 animate-spin inline mr-2" />AI が購読者データを分析中…（しばらくお待ちください）
+              </div>
+            )}
+
+            {qualityResult && !qualityLoading && (
+              <div className="divide-y divide-border">
+
+                {/* ─ 重複名チェック ─ */}
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />
+                    <p className="text-sm font-medium">
+                      同名・複数メール
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        （同じ名前で複数のメールアドレスが登録されているケース）
+                      </span>
+                    </p>
+                    <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${
+                      qualityResult.duplicate_names.length > 0
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-emerald-100 text-emerald-700"
+                    }`}>
+                      {qualityResult.duplicate_names.length > 0
+                        ? `${qualityResult.duplicate_names.length} 件の重複名`
+                        : "問題なし"}
+                    </span>
+                  </div>
+
+                  {qualityResult.duplicate_names.length > 0 && (
+                    <div className="space-y-2">
+                      {qualityResult.duplicate_names.map((dup) => (
+                        <div key={dup.name} className="rounded-lg border border-amber-200 bg-amber-50/50 overflow-hidden">
+                          <div className="px-3 py-2 bg-amber-100/50 flex items-center gap-2">
+                            <span className="text-xs font-medium text-amber-800">{dup.name}</span>
+                            <span className="text-xs text-amber-600">{dup.count} 件</span>
+                          </div>
+                          <table className="w-full text-xs">
+                            <tbody className="divide-y divide-amber-100">
+                              {dup.subscribers.map((s) => (
+                                <tr key={s.id} className="hover:bg-amber-50">
+                                  <td className="px-3 py-2 font-mono">{s.email}</td>
+                                  <td className="px-3 py-2 text-muted-foreground">{s.company}</td>
+                                  <td className="px-3 py-2 text-muted-foreground">{s.department}</td>
+                                  <td className="px-3 py-2 text-muted-foreground tabular-nums">
+                                    {new Date(s.created_at).toLocaleDateString("ja-JP")}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <button
+                                      onClick={() => { startEdit({ id: s.id, email: s.email, name: dup.name, company: s.company, department: s.department, phone: "", note: "", status: s.status as Subscriber["status"], source: "", tags: [], created_at: s.created_at }); setShowQuality(false); }}
+                                      className="text-primary hover:underline"
+                                    >
+                                      編集
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* ─ 姓名逆転チェック ─ */}
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <ArrowLeftRight className="size-3.5 text-blue-500 shrink-0" />
+                    <p className="text-sm font-medium">
+                      姓名逆転の可能性
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        （AI が姓と名の順番が逆と判定した名前）
+                      </span>
+                    </p>
+                    <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${
+                      qualityResult.reversed_names.length > 0
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-emerald-100 text-emerald-700"
+                    }`}>
+                      {qualityResult.reversed_names.length > 0
+                        ? `${qualityResult.reversed_names.length} 件の要確認`
+                        : "問題なし"}
+                    </span>
+                  </div>
+
+                  {qualityResult.reversed_names.length > 0 && (
+                    <div className="rounded-lg border border-blue-200 overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-blue-100 bg-blue-50/50">
+                            <th className="px-3 py-2 text-left font-medium text-blue-700">メール</th>
+                            <th className="px-3 py-2 text-left font-medium text-blue-700">現在の名前</th>
+                            <th className="px-3 py-2 text-left font-medium text-blue-700">修正候補</th>
+                            <th className="px-3 py-2 text-left font-medium text-blue-700">理由</th>
+                            <th className="px-3 py-2"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-blue-100">
+                          {qualityResult.reversed_names.map((r) => (
+                            <tr key={r.id} className="hover:bg-blue-50/30">
+                              <td className="px-3 py-2 font-mono text-muted-foreground">{r.email}</td>
+                              <td className="px-3 py-2 text-red-600 line-through">{r.current_name}</td>
+                              <td className="px-3 py-2 font-medium text-emerald-700">{r.suggested_name}</td>
+                              <td className="px-3 py-2 text-muted-foreground">{r.reason}</td>
+                              <td className="px-3 py-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={applyingFix === r.id}
+                                  onClick={() => applyNameFix(r.id, r.suggested_name)}
+                                  className="h-6 text-xs gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                                >
+                                  <Check className="size-3" />
+                                  {applyingFix === r.id ? "修正中…" : "修正を適用"}
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {qualityResult.reversed_names.length === 0 && !qualityLoading && (
+                    <p className="text-xs text-emerald-600">姓名の逆転は検出されませんでした。</p>
+                  )}
+                </div>
+
+              </div>
+            )}
+          </div>
+        )}
 
         {/* フィルターバー */}
         <div className="flex flex-wrap gap-3 items-end">
