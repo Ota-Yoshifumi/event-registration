@@ -1,7 +1,5 @@
 import { getTheme } from "./themes";
-
-const DEFAULT_FOOTER_TEXT =
-  "このメールは WHGC ゲームチェンジャーズ・フォーラム がお送りしています。";
+import { BRAND_CONFIGS, detectBrand } from "./bulk";
 
 /**
  * プレーンテキストのメール本文から、クライアントサイドでHTML プレビューを生成する。
@@ -13,7 +11,9 @@ export function buildPreviewHtml(
   footerText?: string | null,
   previewName = "〇〇様"
 ): string {
-  const theme = getTheme(headerColor);
+  const theme  = getTheme(headerColor);
+  const brand  = BRAND_CONFIGS[detectBrand(footerText)];
+  const sender = footerText?.trim() || brand.footerSenderText;
 
   const replaced = text
     .replace(/\{\{name\}\}/g, previewName)
@@ -32,8 +32,6 @@ export function buildPreviewHtml(
   );
   const withBreaks = withLinks.replace(/\n/g, "<br>\n");
 
-  const firstLine = footerText?.trim() || DEFAULT_FOOTER_TEXT;
-
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -47,7 +45,7 @@ export function buildPreviewHtml(
         <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
           <tr>
             <td style="background-color:${theme.header};padding:20px 32px;">
-              <p style="margin:0;color:#ffffff;font-size:15px;font-weight:600;letter-spacing:0.04em;">WHGC ゲームチェンジャーズ・フォーラム</p>
+              <p style="margin:0;color:#ffffff;font-size:15px;font-weight:600;letter-spacing:0.04em;">${brand.headerTitle}</p>
             </td>
           </tr>
           <tr>
@@ -56,8 +54,8 @@ export function buildPreviewHtml(
           <tr>
             <td style="padding:20px 32px;background-color:#fafafa;border-top:1px solid #e4e4e7;">
               <p style="margin:0;color:#71717a;font-size:12px;line-height:1.8;">
-                ${firstLine}<br>配信停止をご希望の方は <a href="#unsubscribe-preview" style="color:#71717a;text-decoration:underline;">こちら</a>より停止手続きをお願いいたします。<br>
-                ご不明な点は <a href="mailto:info@whgcforum.org" style="color:#71717a;">info@whgcforum.org</a> までお問い合わせください。
+                ${sender}<br>配信停止をご希望の方は <a href="#unsubscribe-preview" style="color:#71717a;text-decoration:underline;">こちら</a>より停止手続きをお願いいたします。<br>
+                ご不明な点は <a href="mailto:${brand.contactEmail}" style="color:#71717a;">${brand.contactEmail}</a> までお問い合わせください。
               </p>
             </td>
           </tr>

@@ -379,7 +379,7 @@ export default function NewsletterListPage() {
                   onChange={(e) => setSchedDateTime(e.target.value)}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 />
-                <p className="text-xs text-muted-foreground">設定した日時に GitHub Actions が自動で送信します</p>
+                <p className="text-xs text-muted-foreground">現時刻より 1 時間以降の時間を設定してください（毎時自動実行）</p>
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" size="sm" onClick={() => setScheduleModal(null)}>キャンセル</Button>
@@ -1304,7 +1304,7 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  設定した日時に GitHub Actions が自動で送信します（毎日 JST 10:00 実行）
+                  現時刻より 1 時間以降の時間を設定してください（毎時自動実行）
                 </p>
               </div>
 

@@ -47,16 +47,16 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { subject = "", body: emailBody = "", recipient_tags = [] } = body;
+    const { subject = "", body: emailBody = "", recipient_tags = [], footer_text = null } = body;
 
     const db = await getD1();
     const now = new Date().toISOString();
     const id = randomUUID();
 
     await db.prepare(
-      `INSERT INTO newsletter_campaigns (id, subject, body, status, recipient_tags, recipient_count, sent_count, failed_count, created_at, updated_at)
-       VALUES (?, ?, ?, 'draft', ?, 0, 0, 0, ?, ?)`
-    ).bind(id, subject, emailBody, JSON.stringify(recipient_tags), now, now).run();
+      `INSERT INTO newsletter_campaigns (id, subject, body, status, recipient_tags, recipient_count, sent_count, failed_count, footer_text, created_at, updated_at)
+       VALUES (?, ?, ?, 'draft', ?, 0, 0, 0, ?, ?, ?)`
+    ).bind(id, subject, emailBody, JSON.stringify(recipient_tags), footer_text, now, now).run();
 
     return NextResponse.json({ id, success: true });
   } catch (error) {

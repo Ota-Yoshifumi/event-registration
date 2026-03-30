@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getD1 } from "@/lib/d1";
 import { verifyAdminRequest } from "@/lib/auth";
-import { buildHtmlEmail } from "@/lib/email/bulk";
+import { buildHtmlEmail, detectBrand, BRAND_CONFIGS } from "@/lib/email/bulk";
 
 const BATCH_SIZE = 100;
-const FROM_NAME  = "WHGC ゲームチェンジャーズ・フォーラム";
 
 // POST /api/newsletter/campaigns/process-scheduled
 // スケジュール済みキャンペーンのうち、送信時刻を過ぎたものを 1 バッチ分送信する。
@@ -25,8 +24,10 @@ export async function POST(request: NextRequest) {
   // 送信対象キャンペーンを取得
   let campaign: any;
   if (targetCampaignId) {
+    // campaign_id 指定時: scheduled（初回）または sending（継続バッチ）どちらも対象
     campaign = await db.prepare(
-      `SELECT * FROM newsletter_campaigns WHERE id = ? AND status = 'scheduled' AND scheduled_at <= ?`
+      `SELECT * FROM newsletter_campaigns
+       WHERE id = ? AND status IN ('scheduled', 'sending') AND scheduled_at <= ?`
     ).bind(targetCampaignId, now).first();
   } else {
     // 指定なし: 最古の送信期限超過キャンペーンを1件取得
@@ -43,8 +44,9 @@ export async function POST(request: NextRequest) {
 
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "RESEND_API_KEY が未設定" }, { status: 500 });
-  const resend = new Resend(apiKey);
+  const resend    = new Resend(apiKey);
   const fromEmail = process.env.RESEND_FROM_EMAIL ?? "noreply@events.allianceforum.org";
+  const fromName  = BRAND_CONFIGS[detectBrand(campaign.footer_text)].fromName;
 
   const listId: string | null = campaign.list_id ?? null;
   const recipientTags: string[] = JSON.parse(campaign.recipient_tags || "[]");
@@ -122,7 +124,7 @@ export async function POST(request: NextRequest) {
         .replace(/\{\{department\}\}/g, s.department || "")
         .replace(/\{\{unsubscribe_url\}\}/g, unsubscribeUrl);
       return {
-        from: `${FROM_NAME} <${fromEmail}>`,
+        from: `${fromName} <${fromEmail}>`,
         to: s.email,
         subject: campaign.subject as string,
         html: buildHtmlEmail(personalizedBody, unsubscribeUrl, campaign.header_color, campaign.footer_text),

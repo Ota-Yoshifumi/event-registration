@@ -17,6 +17,8 @@ import type { TenantKey } from "@/lib/tenant-config";
 import Link from "next/link";
 import { EMAIL_THEMES } from "@/lib/email/themes";
 import { buildPreviewHtml } from "@/lib/email/client-preview";
+import { BRAND_CONFIGS, detectBrand } from "@/lib/email/bulk";
+import type { BrandKey } from "@/lib/email/bulk";
 
 // ─── 型定義 ──────────────────────────────────────────────────────────────────
 
@@ -98,11 +100,17 @@ function ComposeHub() {
   const drafts = campaigns.filter((c) => c.status === "draft");
   const sentList = campaigns.filter((c) => c.status === "sent");
 
-  async function createNew() {
+  async function createNew(brand: BrandKey) {
+    const brandConfig = BRAND_CONFIGS[brand];
     const res = await fetch("/api/newsletter/campaigns", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject: "", body: "", recipient_tags: [] }),
+      body: JSON.stringify({
+        subject: "",
+        body: "",
+        recipient_tags: [],
+        footer_text: brandConfig.footerSenderText,
+      }),
     });
     const data = await res.json();
     if (res.ok) {
@@ -111,6 +119,19 @@ function ComposeHub() {
       toast.error("作成に失敗しました");
     }
   }
+
+  const TEMPLATE_OPTIONS: { brand: BrandKey; label: string; sub: string }[] = [
+    {
+      brand: "aff",
+      label: "① アライアンス・フォーラム財団",
+      sub:   "ヘッダー：アライアンス・フォーラム財団 / 問い合わせ：contact@allianceforum.org",
+    },
+    {
+      brand: "whgc",
+      label: "② WHGC ゲームチェンジャーズ・フォーラム",
+      sub:   "ヘッダー：WHGC ゲームチェンジャーズ・フォーラム / 問い合わせ：info@whgcforum.org",
+    },
+  ];
 
   return (
     <div className="p-6 space-y-8 max-w-4xl">
@@ -129,11 +150,24 @@ function ComposeHub() {
         <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Plus className="size-4 text-primary" />新規作成
         </h2>
-        <div className="rounded-xl border border-border bg-card p-5">
-          <Button onClick={createNew} className="gap-1.5">
-            <Plus className="size-3.5" />新規メールを作成
-          </Button>
-          <p className="text-xs text-muted-foreground mt-2">
+        <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+          <p className="text-xs text-muted-foreground">テンプレートを選択して作成します。</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {TEMPLATE_OPTIONS.map((opt) => (
+              <button
+                key={opt.brand}
+                onClick={() => createNew(opt.brand)}
+                className="flex flex-col items-start gap-1 rounded-lg border border-border bg-background px-4 py-3 text-left hover:border-primary hover:bg-primary/5 transition-colors"
+              >
+                <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                  <Plus className="size-3.5 text-primary shrink-0" />
+                  {opt.label}
+                </span>
+                <span className="text-xs text-muted-foreground leading-relaxed">{opt.sub}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
             件名・本文を入力し、下書き保存してからリスト設定・配信で送信します。
           </p>
         </div>
@@ -254,6 +288,8 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
   const [headerColor, setHeaderColor] = useState("dark");
   const [footerText, setFooterText] = useState("");
   const [showFooterEdit, setShowFooterEdit] = useState(false);
+
+  const currentBrand = BRAND_CONFIGS[detectBrand(footerText)];
 
   const [selectedTenant, setSelectedTenant] = useState<TenantKey>("whgc-seminars");
   const [seminars, setSeminars] = useState<Seminar[]>([]);
@@ -510,18 +546,24 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
             </button>
             {showFooterEdit && (
               <div className="px-4 pb-4 space-y-2 border-t border-border pt-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-foreground">現在のテンプレート：</span>
+                  <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                    {currentBrand.headerTitle}
+                  </span>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  フッターの1行目テキストを変更できます。空白の場合はデフォルトが使われます。
+                  フッターの送信者名テキストを変更できます。空白の場合はテンプレートのデフォルトが使われます。
                 </p>
                 <Textarea
                   value={footerText}
                   onChange={(e) => setFooterText(e.target.value)}
-                  placeholder="このメールは WHGC ゲームチェンジャーズ・フォーラム がお送りしています。"
+                  placeholder={currentBrand.footerSenderText}
                   className="text-sm min-h-[60px] resize-none"
                 />
                 <div className="rounded-md border border-border bg-background/50 px-3 py-2 text-xs text-muted-foreground space-y-0.5">
                   <p>（自動付与）配信停止をご希望の方は「こちら」より停止手続きをお願いいたします。</p>
-                  <p>（固定）ご不明な点は info@whgcforum.org までお問い合わせください。</p>
+                  <p>（固定）ご不明な点は {currentBrand.contactEmail} までお問い合わせください。</p>
                 </div>
               </div>
             )}

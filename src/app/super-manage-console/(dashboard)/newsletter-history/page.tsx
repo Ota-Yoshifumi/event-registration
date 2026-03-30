@@ -123,7 +123,7 @@ export default function NewsletterHistoryPage() {
           <p className="admin-description mt-1">メルマガのキャンペーン一覧</p>
           <p className="text-xs text-muted-foreground mt-2 max-w-xl leading-relaxed">
             配信は <strong>100件ずつ自動分割</strong> して順番に送信します（Resend API の仕様）。1,000件の場合は約10回のリクエストが順次実行されます。<br />
-            <strong>予約配信</strong>は毎日 JST 10:00 に GitHub Actions が自動実行するため、ブラウザを開いておく必要はありません。<br />
+            <strong>予約配信</strong>は GitHub Actions が<strong>毎時自動実行</strong>するため、ブラウザを開いておく必要はありません。ただし、<strong>現時刻より 1 時間以降の時間</strong>を設定してください。<br />
             <strong className="text-amber-600">即時送信中はブラウザのタブを閉じたり、ページを移動したりしないでください。</strong>中断した場合、処理済みのバッチまでは送信済みとなり、残りの配信は行われません。
           </p>
         </div>

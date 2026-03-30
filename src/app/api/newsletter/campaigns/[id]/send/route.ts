@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getD1 } from "@/lib/d1";
 import { verifyAdminRequest } from "@/lib/auth";
-import { buildHtmlEmail } from "@/lib/email/bulk";
+import { buildHtmlEmail, detectBrand, BRAND_CONFIGS } from "@/lib/email/bulk";
 
 const BATCH_SIZE = 100; // Resend batch.send の上限
-const FROM_NAME = "WHGC ゲームチェンジャーズ・フォーラム";
 
 // POST /api/newsletter/campaigns/[id]/send
 // Body:
@@ -42,13 +41,14 @@ export async function POST(
     const resend = new Resend(apiKey);
 
     const fromEmail = process.env.RESEND_FROM_EMAIL ?? "noreply@events.allianceforum.org";
+    const fromName  = BRAND_CONFIGS[detectBrand(campaign.footer_text)].fromName;
     const now = new Date().toISOString();
 
     // ── テスト送信 ──────────────────────────────────────────
     if (testEmail) {
       const html = buildHtmlEmail(campaign.body, undefined, campaign.header_color, campaign.footer_text);
       const { error } = await resend.emails.send({
-        from: `${FROM_NAME} <${fromEmail}>`,
+        from: `${fromName} <${fromEmail}>`,
         to: testEmail,
         subject: `[テスト] ${campaign.subject}`,
         html,
@@ -144,7 +144,7 @@ export async function POST(
         .replace(/\{\{department\}\}/g, subscriber.department || "")
         .replace(/\{\{unsubscribe_url\}\}/g, unsubscribeUrl);
       return {
-        from: `${FROM_NAME} <${fromEmail}>`,
+        from: `${fromName} <${fromEmail}>`,
         to: subscriber.email,
         subject: campaign.subject as string,
         html: buildHtmlEmail(personalizedBody, unsubscribeUrl, campaign.header_color, campaign.footer_text),

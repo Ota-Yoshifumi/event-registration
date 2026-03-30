@@ -8,13 +8,20 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
-const TENANT = "whgc-seminars";
-const REDIRECT_PATH = "/whgc-seminars/manage-console";
+const TENANT_OPTIONS = [
+  { value: "whgc-seminars",   label: "WHGC セミナー" },
+  { value: "kgri-pic-center", label: "KGRI PIC センター" },
+  { value: "aff-events",      label: "AFF イベント" },
+  { value: "pic-courses",     label: "PIC コース" },
+] as const;
 
-export default function WhgcSeminarsLoginPage() {
+type TenantValue = (typeof TENANT_OPTIONS)[number]["value"];
+
+export default function TenantLoginPage() {
   const router = useRouter();
+  const [tenant, setTenant]     = useState<TenantValue>("whgc-seminars");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]   = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,7 +31,7 @@ export default function WhgcSeminarsLoginPage() {
       const res = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, tenant: TENANT }),
+        body: JSON.stringify({ password, tenant }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -33,7 +40,7 @@ export default function WhgcSeminarsLoginPage() {
       }
 
       toast.success("ログインしました");
-      router.replace(REDIRECT_PATH);
+      router.replace(`/${tenant}/manage-console`);
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "ログインに失敗しました");
@@ -50,8 +57,27 @@ export default function WhgcSeminarsLoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+
+            {/* テナント選択 */}
             <div className="space-y-2">
-              <Label htmlFor="password">管理者パスワード</Label>
+              <Label htmlFor="tenant">テナント</Label>
+              <select
+                id="tenant"
+                value={tenant}
+                onChange={(e) => setTenant(e.target.value as TenantValue)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                {TENANT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* パスワード */}
+            <div className="space-y-2">
+              <Label htmlFor="password">パスワード</Label>
               <Input
                 id="password"
                 type="password"
@@ -61,6 +87,7 @@ export default function WhgcSeminarsLoginPage() {
                 placeholder="パスワードを入力"
               />
             </div>
+
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "ログイン中..." : "ログイン"}
             </Button>

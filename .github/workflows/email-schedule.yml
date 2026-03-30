@@ -2,8 +2,8 @@ name: メール配信スケジュール処理
 
 on:
   schedule:
-    # JST 10:00 (UTC 01:00) に毎日実行
-    - cron: '0 1 * * *'
+    # 毎時 0 分に実行（JST = UTC+9）
+    - cron: '0 * * * *'
   workflow_dispatch: # GitHub 画面から手動実行も可能
 
 jobs:
@@ -50,12 +50,20 @@ jobs:
         run: |
           MAX_BATCHES=500
           BATCH=0
+          CAMPAIGN_ID=""
 
           while [ $BATCH -lt $MAX_BATCHES ]; do
+            # Batch 0 はキャンペーンを自動選択、以降は同じ campaign_id を指定して続きを送信
+            if [ -z "$CAMPAIGN_ID" ]; then
+              PAYLOAD="{\"offset\": $(( BATCH * 100 ))}"
+            else
+              PAYLOAD="{\"campaign_id\": \"$CAMPAIGN_ID\", \"offset\": $(( BATCH * 100 ))}"
+            fi
+
             RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
               -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
               -H "Content-Type: application/json" \
-              -d "{\"offset\": $(( BATCH * 100 ))}" \
+              -d "$PAYLOAD" \
               https://events.allianceforum.org/api/newsletter/campaigns/process-scheduled)
 
             HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
@@ -69,9 +77,13 @@ jobs:
               exit 1
             fi
 
-            # has_more が false または processed が 0 なら終了
+            # Batch 0 のレスポンスから campaign_id を取得
+            if [ -z "$CAMPAIGN_ID" ]; then
+              CAMPAIGN_ID=$(echo "$BODY" | grep -o '"campaign_id":"[^"]*"' | head -1 | sed 's/"campaign_id":"//;s/"//')
+            fi
+
+            # has_more が false なら終了
             HAS_MORE=$(echo "$BODY" | grep -o '"has_more":true' || true)
-            PROCESSED=$(echo "$BODY" | grep -o '"sent":[0-9]*' | head -1 | grep -o '[0-9]*' || echo "0")
 
             if [ -z "$HAS_MORE" ]; then
               echo "配信完了または対象なし。終了します。"
