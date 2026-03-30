@@ -57,7 +57,7 @@ export function buildPreviewHtml(
             <td style="padding:20px 32px;background-color:#fafafa;border-top:1px solid #e4e4e7;">
               <p style="margin:0;color:#71717a;font-size:12px;line-height:1.8;">
                 ${firstLine}<br>配信停止をご希望の方は <a href="#unsubscribe-preview" style="color:#71717a;text-decoration:underline;">こちら</a>より停止手続きをお願いいたします。<br>
-                ご不明な点は <a href="mailto:info@allianceforum.org" style="color:#71717a;">info@allianceforum.org</a> までお問い合わせください。
+                ご不明な点は <a href="mailto:info@whgcforum.org" style="color:#71717a;">info@whgcforum.org</a> までお問い合わせください。
               </p>
             </td>
           </tr>

@@ -40,7 +40,7 @@ export function buildSeminarVars(seminar: Seminar): Record<string, string> {
     meet_url_line: meetUrlLine,
     registration_url: `${appUrl}/seminars/${seminar.id}`,
     survey_url: `${appUrl}/seminars/${seminar.id}/survey`,
-    from_email: process.env.RESEND_FROM_EMAIL ?? "",
+    from_email: "info@whgcforum.org",
   };
 }
 
@@ -114,7 +114,7 @@ export function buildHtmlEmail(text: string, unsubscribeUrl?: string, headerColo
             <td style="padding:20px 32px;background-color:#fafafa;border-top:1px solid #e4e4e7;">
               <p style="margin:0;color:#71717a;font-size:12px;line-height:1.8;">
                 ${footerText?.trim() || DEFAULT_FOOTER_TEXT}${unsubscribeSection}<br>
-                ご不明な点は <a href="mailto:info@allianceforum.org" style="color:#71717a;">info@allianceforum.org</a> までお問い合わせください。
+                ご不明な点は <a href="mailto:info@whgcforum.org" style="color:#71717a;">info@whgcforum.org</a> までお問い合わせください。
               </p>
             </td>
           </tr>

@@ -521,7 +521,7 @@ function ComposeEditor({ campaignId, router }: { campaignId: string; router: Ret
                 />
                 <div className="rounded-md border border-border bg-background/50 px-3 py-2 text-xs text-muted-foreground space-y-0.5">
                   <p>（自動付与）配信停止をご希望の方は「こちら」より停止手続きをお願いいたします。</p>
-                  <p>（固定）ご不明な点は info@allianceforum.org までお問い合わせください。</p>
+                  <p>（固定）ご不明な点は info@whgcforum.org までお問い合わせください。</p>
                 </div>
               </div>
             )}
