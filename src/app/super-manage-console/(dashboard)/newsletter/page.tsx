@@ -130,6 +130,12 @@ export default function NewsletterPage() {
   const [smartTagPreviewing, setSmartTagPreviewing] = useState(false);
   const [smartTagApplying, setSmartTagApplying] = useState(false);
 
+  // タグ別一括削除
+  const [showDeleteByTag, setShowDeleteByTag] = useState(false);
+  const [deleteByTagName, setDeleteByTagName] = useState("");
+  const [deleteByTagCount, setDeleteByTagCount] = useState<number | null>(null);
+  const [deleteByTagPreviewing, setDeleteByTagPreviewing] = useState(false);
+  const [deleteByTagDeleting, setDeleteByTagDeleting] = useState(false);
 
   const LIMIT = 50;
 
@@ -251,7 +257,37 @@ export default function NewsletterPage() {
       const lines = text.split(/\r?\n/).filter((l) => l.trim());
       if (lines.length < 2) throw new Error("データがありません（ヘッダー行 + データ行が必要です）");
 
-      const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, "").toLowerCase());
+      // カラム名の正規化マップ（日本語・Sansan等の別名 → 内部フィールド名）
+      const COL_MAP: Record<string, string> = {
+        // email
+        "email": "email", "e-mail": "email", "mail": "email", "メール": "email",
+        "メールアドレス": "email", "email(1)": "email", "email（1）": "email",
+        "e-mail(1)": "email", "メール(1)": "email",
+        // name
+        "name": "name", "氏名": "name", "名前": "name", "お名前": "name",
+        "フルネーム": "name", "担当者名": "name",
+        // company
+        "company": "company", "会社名": "company", "会社": "company",
+        "勤務先": "company", "所属": "company", "organization": "company",
+        // department
+        "department": "department", "部署名": "department", "部署": "department",
+        "部門": "department", "部門名": "department",
+        // phone
+        "phone": "phone", "電話": "phone", "電話番号": "phone", "tel": "phone",
+        "携帯": "phone", "携帯電話": "phone",
+        // note（役職・メモ・備考も note に格納）
+        "note": "note", "メモ": "note", "備考": "note", "コメント": "note",
+        "役職": "note",
+        // tags
+        "tags": "tags", "tag": "tags", "タグ": "tags",
+      };
+
+      const rawHeaders = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
+      const headers = rawHeaders.map((h) => {
+        const lower = h.toLowerCase().trim();
+        return COL_MAP[lower] ?? COL_MAP[h] ?? lower;
+      });
+
       const rows = lines.slice(1).map((line) => {
         const values = line.split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
         const row: Record<string, string> = {};
@@ -396,6 +432,45 @@ export default function NewsletterPage() {
     finally { setSmartTagApplying(false); }
   }
 
+  // タグ別一括削除 プレビュー
+  async function previewDeleteByTag() {
+    if (!deleteByTagName.trim()) { toast.error("タグ名を入力してください"); return; }
+    setDeleteByTagPreviewing(true);
+    setDeleteByTagCount(null);
+    try {
+      const res = await fetch("/api/newsletter/subscribers/delete-by-tag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tag: deleteByTagName.trim(), preview: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setDeleteByTagCount(data.count);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "確認に失敗しました"); }
+    finally { setDeleteByTagPreviewing(false); }
+  }
+
+  // タグ別一括削除 実行
+  async function executeDeleteByTag() {
+    if (!deleteByTagName.trim() || deleteByTagCount === null) return;
+    setDeleteByTagDeleting(true);
+    try {
+      const res = await fetch("/api/newsletter/subscribers/delete-by-tag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tag: deleteByTagName.trim(), preview: false }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(`「${deleteByTagName}」タグの購読者 ${data.deleted} 件を削除しました`);
+      setShowDeleteByTag(false);
+      setDeleteByTagName("");
+      setDeleteByTagCount(null);
+      load(1); loadTags();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "削除に失敗しました"); }
+    finally { setDeleteByTagDeleting(false); }
+  }
+
   // セミナー参加者→マスター同期
   async function syncFromRegistrations() {
     setSyncing(true);
@@ -461,6 +536,9 @@ export default function NewsletterPage() {
             </Button>
             <Button variant="outline" size="sm" onClick={() => setShowImport(true)} className="gap-1.5">
               <Upload className="size-3.5" />CSVインポート
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { setShowDeleteByTag(true); setDeleteByTagCount(null); }} className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400">
+              <Trash2 className="size-3.5" />タグで削除
             </Button>
             <Button size="sm" onClick={() => setShowAddForm(true)} className="gap-1.5">
               <Plus className="size-3.5" />追加
@@ -1046,6 +1124,66 @@ export default function NewsletterPage() {
             <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
               <Button variant="outline" size="sm" onClick={() => setShowAddForm(false)}>キャンセル</Button>
               <Button size="sm" disabled={adding} onClick={handleAdd}>{adding ? "追加中..." : "追加"}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== タグ別一括削除 モーダル ===== */}
+      {showDeleteByTag && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteByTag(false); }}>
+          <div className="w-full max-w-md rounded-xl border border-border bg-background shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-red-600 dark:text-red-400">タグで一括削除</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">指定したタグを持つ購読者をすべて削除します</p>
+              </div>
+              <button onClick={() => setShowDeleteByTag(false)} className="rounded p-1.5 text-muted-foreground hover:bg-muted"><X className="size-4" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* タグ選択 */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">削除するタグ名</label>
+                <div className="flex gap-2">
+                  <select
+                    value={deleteByTagName}
+                    onChange={(e) => { setDeleteByTagName(e.target.value); setDeleteByTagCount(null); }}
+                    className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">タグを選択…</option>
+                    {tags.map(({ tag, count }) => (
+                      <option key={tag} value={tag}>{tag}（{count.toLocaleString()}件）</option>
+                    ))}
+                  </select>
+                  <Button variant="outline" size="sm" onClick={previewDeleteByTag} disabled={deleteByTagPreviewing || !deleteByTagName} className="shrink-0">
+                    {deleteByTagPreviewing ? "確認中…" : "件数確認"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* 確認メッセージ */}
+              {deleteByTagCount !== null && (
+                <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20 p-4 space-y-1">
+                  <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+                    「{deleteByTagName}」タグの購読者 {deleteByTagCount.toLocaleString()} 件を削除します
+                  </p>
+                  <p className="text-xs text-red-600 dark:text-red-400">この操作は取り消せません。削除してよろしいですか？</p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={() => setShowDeleteByTag(false)}>キャンセル</Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={executeDeleteByTag}
+                  disabled={deleteByTagDeleting || deleteByTagCount === null || deleteByTagCount === 0}
+                  className="gap-1.5"
+                >
+                  <Trash2 className="size-3.5" />
+                  {deleteByTagDeleting ? "削除中…" : `${deleteByTagCount ?? 0} 件を削除`}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
