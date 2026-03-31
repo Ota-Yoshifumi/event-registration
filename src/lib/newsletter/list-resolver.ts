@@ -9,7 +9,8 @@
 export type ListCondition =
   | { type: "domain"; domains: string[] }
   | { type: "event"; seminar_id: string; seminar_title?: string; attendance_type: "registered" | "attended" }
-  | { type: "keyword"; field: "department" | "company" | "name"; keywords: string[] };
+  | { type: "keyword"; field: "department" | "company" | "name"; keywords: string[] }
+  | { type: "tag"; tags: string[] };
 
 interface D1Database {
   prepare(sql: string): D1PreparedStatement;
@@ -73,6 +74,17 @@ export async function resolveConditionIds(
       const rows = await db.prepare(
         `SELECT id FROM newsletter_subscribers WHERE status = 'active' AND (${likeExprs})`
       ).bind(...binds).all() as any;
+      ids = (rows.results ?? []).map((r: any) => r.id);
+
+    } else if (cond.type === "tag") {
+      if (!cond.tags || cond.tags.length === 0) continue;
+      const placeholders = cond.tags.map(() => "?").join(", ");
+      const rows = await db.prepare(
+        `SELECT DISTINCT s.id
+         FROM newsletter_subscribers s
+         JOIN newsletter_tags t ON t.subscriber_id = s.id
+         WHERE s.status = 'active' AND t.tag IN (${placeholders})`
+      ).bind(...cond.tags).all() as any;
       ids = (rows.results ?? []).map((r: any) => r.id);
     }
 
@@ -146,6 +158,17 @@ export async function resolveListConditions(
       const rows = await db.prepare(
         `SELECT id FROM newsletter_subscribers WHERE status = 'active' AND (${likeExprs})`
       ).bind(...binds).all() as any;
+      ids = (rows.results ?? []).map((r: any) => r.id);
+
+    } else if (cond.type === "tag") {
+      if (!cond.tags || cond.tags.length === 0) continue;
+      const placeholders = cond.tags.map(() => "?").join(", ");
+      const rows = await db.prepare(
+        `SELECT DISTINCT s.id
+         FROM newsletter_subscribers s
+         JOIN newsletter_tags t ON t.subscriber_id = s.id
+         WHERE s.status = 'active' AND t.tag IN (${placeholders})`
+      ).bind(...cond.tags).all() as any;
       ids = (rows.results ?? []).map((r: any) => r.id);
     }
 

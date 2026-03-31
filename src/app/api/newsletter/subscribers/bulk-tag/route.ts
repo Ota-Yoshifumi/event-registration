@@ -5,24 +5,31 @@ import { getMemberDomainsForTenant } from "@/lib/google/sheets";
 import { isTenantKey } from "@/lib/tenant-config";
 
 // POST /api/newsletter/subscribers/bulk-tag
-// Body: { rule: "member_domain", tenant: string, tagName?: string, preview?: boolean }
+// Body: { rule: "member_domain", tenant: string, tagNames?: string[], tagName?: string, preview?: boolean }
+// tagNames takes precedence over tagName (backward compat)
 export async function POST(request: NextRequest) {
   const ok = await verifyAdminRequest(request);
   if (!ok) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
 
   try {
     const body = await request.json();
-    const { rule, tenant, tagName, preview = false } = body as {
+    const { rule, tenant, tagName, tagNames, preview = false } = body as {
       rule: string;
       tenant: string;
       tagName?: string;
+      tagNames?: string[];
       preview?: boolean;
     };
+
+    // tagNames (array) takes precedence; fall back to single tagName
+    const resolvedTags = (tagNames && tagNames.length > 0)
+      ? tagNames.map((t) => t.trim()).filter(Boolean)
+      : tagName?.trim() ? [tagName.trim()] : [];
 
     if (!rule) return NextResponse.json({ error: "ルールを指定してください" }, { status: 400 });
     if (!tenant || !isTenantKey(tenant))
       return NextResponse.json({ error: "テナントを指定してください" }, { status: 400 });
-    if (!preview && !tagName?.trim())
+    if (!preview && resolvedTags.length === 0)
       return NextResponse.json({ error: "タグ名を入力してください" }, { status: 400 });
 
     let subscriberIds: string[] = [];
@@ -62,20 +69,21 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // タグを付与（重複は無視）
+      // タグを付与（重複は無視・複数タグ対応）
       const db2 = await getD1();
       const now = new Date().toISOString();
-      const tag = tagName!.trim();
       for (const id of subscriberIds) {
-        await db2
-          .prepare(
-            `INSERT OR IGNORE INTO newsletter_tags (subscriber_id, tag, created_at) VALUES (?, ?, ?)`
-          )
-          .bind(id, tag, now)
-          .run();
+        for (const tag of resolvedTags) {
+          await db2
+            .prepare(
+              `INSERT OR IGNORE INTO newsletter_tags (subscriber_id, tag, created_at) VALUES (?, ?, ?)`
+            )
+            .bind(id, tag, now)
+            .run();
+        }
       }
 
-      return NextResponse.json({ tagged: subscriberIds.length });
+      return NextResponse.json({ tagged: subscriberIds.length, tags: resolvedTags });
     }
 
     return NextResponse.json({ error: "未対応のルールです" }, { status: 400 });

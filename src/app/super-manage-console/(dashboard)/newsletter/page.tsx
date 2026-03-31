@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Search, Plus, Upload, RefreshCw, Trash2, Pencil, X, Check, ShieldCheck, ChevronDown, ChevronUp, AlertTriangle, Sparkles, ArrowLeftRight, ArrowDownToLine, Tag } from "lucide-react";
+import { Search, Plus, Upload, RefreshCw, Trash2, Pencil, X, Check, ShieldCheck, ChevronDown, ChevronUp, AlertTriangle, Sparkles, ArrowLeftRight, ArrowDownToLine, Tag, GitMerge } from "lucide-react";
 
 interface Subscriber {
   id: string;
@@ -23,6 +23,30 @@ interface Subscriber {
 }
 
 interface TagCount { tag: string; count: number; }
+
+interface PendingEntry {
+  id: string;
+  newName: string;
+  newCompany: string;
+  newDepartment: string;
+  newPhone: string;
+  newNote: string;
+  newTags: string;
+  createdAt: string;
+}
+
+interface ImportPendingGroup {
+  existingId: string;
+  email: string;
+  currentName: string;
+  currentCompany: string;
+  currentDepartment: string;
+  currentPhone: string;
+  currentNote: string;
+  currentTags: string;
+  currentStatus: string;
+  pending: PendingEntry[];
+}
 
 interface DuplicateName {
   name: string;
@@ -72,7 +96,7 @@ export default function NewsletterPage() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importTags, setImportTags] = useState("");
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ imported: number; skipped: number; total: number } | null>(null);
+  const [importResult, setImportResult] = useState<{ imported: number; skipped?: number; pending?: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 削除確認
@@ -87,6 +111,13 @@ export default function NewsletterPage() {
 
   // セミナー同期
   const [syncing, setSyncing] = useState(false);
+
+  // 重複レビュー
+  const [showPending, setShowPending] = useState(false);
+  const [pendingGroups, setPendingGroups] = useState<ImportPendingGroup[]>([]);
+  const [pendingTotal, setPendingTotal] = useState(0);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [adoptingId, setAdoptingId] = useState<string | null>(null); // existingId
 
   // スマートタグ
   const [showSmartTag, setShowSmartTag] = useState(false);
@@ -131,15 +162,37 @@ export default function NewsletterPage() {
     if (!addForm.email) { toast.error("メールアドレスは必須です"); return; }
     setAdding(true);
     try {
+      const tags = addForm.tags.split(/[,、]/).map((t) => t.trim()).filter(Boolean);
       const res = await fetch("/api/newsletter/subscribers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...addForm,
-          tags: addForm.tags.split(/[,、]/).map((t) => t.trim()).filter(Boolean),
-        }),
+        body: JSON.stringify({ ...addForm, tags }),
       });
       const data = await res.json();
+
+      if (res.status === 409) {
+        // 重複メール → pending に保存してレビューへ
+        const importRes = await fetch("/api/newsletter/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            rows: [{ ...addForm }],
+            filename: "手動追加",
+            source: "manual",
+            tags,
+          }),
+        });
+        if (!importRes.ok) throw new Error("保留の保存に失敗しました");
+        toast.info("このメールアドレスは既に登録済みのため「重複レビュー」に保留しました");
+        setShowAddForm(false);
+        setAddForm(EMPTY_FORM);
+        setPendingTotal((prev) => prev + 1);
+        // 重複レビューパネルを開く
+        setShowPending(true);
+        loadPending();
+        return;
+      }
+
       if (!res.ok) throw new Error(data.error);
       toast.success("追加しました");
       setShowAddForm(false);
@@ -269,6 +322,38 @@ export default function NewsletterPage() {
     }
   }
 
+  // 重複保留の読み込み
+  async function loadPending() {
+    setPendingLoading(true);
+    try {
+      const res = await fetch("/api/newsletter/import-pending");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPendingGroups(data.groups ?? []);
+      setPendingTotal(data.total ?? 0);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "読み込みに失敗しました"); }
+    finally { setPendingLoading(false); }
+  }
+
+  // データを採用（existingId: 対象グループ, adoptPendingId: null=既存採用, id=pending採用）
+  async function adoptData(existingId: string, adoptPendingId: string | null) {
+    setAdoptingId(existingId);
+    try {
+      const res = await fetch("/api/newsletter/import-pending/adopt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ existingId, adoptPendingId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success("採用しました。他の候補は非アクティブにしました");
+      setPendingGroups((prev) => prev.filter((g) => g.existingId !== existingId));
+      setPendingTotal((prev) => Math.max(0, prev - 1));
+      if (adoptPendingId) load(page);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "処理に失敗しました"); }
+    finally { setAdoptingId(null); }
+  }
+
   // スマートタグ プレビュー
   async function previewSmartTag() {
     setSmartTagPreviewing(true);
@@ -289,19 +374,21 @@ export default function NewsletterPage() {
     finally { setSmartTagPreviewing(false); }
   }
 
-  // スマートタグ 付与
+  // スマートタグ 付与（複数タグ対応：カンマ・読点・改行で分割）
   async function applySmartTag() {
-    if (!smartTagName.trim()) { toast.error("タグ名を入力してください"); return; }
+    const tagNames = smartTagName.split(/[,、\n]+/).map((t) => t.trim()).filter(Boolean);
+    if (tagNames.length === 0) { toast.error("タグ名を入力してください"); return; }
     setSmartTagApplying(true);
     try {
       const res = await fetch("/api/newsletter/subscribers/bulk-tag", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rule: smartTagRule, tenant: smartTagTenant, tagName: smartTagName }),
+        body: JSON.stringify({ rule: smartTagRule, tenant: smartTagTenant, tagNames }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success(`${data.tagged} 件にタグ「${smartTagName}」を付与しました`);
+      const tagLabel = tagNames.length === 1 ? `「${tagNames[0]}」` : `${tagNames.length} 種類のタグ`;
+      toast.success(`${data.tagged} 件に${tagLabel}を付与しました`);
       setSmartTagName("");
       setSmartTagPreviewCount(null);
       load(1); loadTags();
@@ -345,6 +432,20 @@ export default function NewsletterPage() {
             >
               <ShieldCheck className="size-3.5" />品質チェック
               {showQuality ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setShowPending((v) => !v); if (!showPending) loadPending(); }}
+              className={`gap-1.5 relative ${pendingTotal > 0 ? "border-amber-400 text-amber-700 hover:bg-amber-50" : ""}`}
+            >
+              <GitMerge className="size-3.5" />重複レビュー
+              {pendingTotal > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white">
+                  {pendingTotal > 9 ? "9+" : pendingTotal}
+                </span>
+              )}
+              {showPending ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
             </Button>
             <Button
               variant="outline"
@@ -516,6 +617,140 @@ export default function NewsletterPage() {
           </div>
         )}
 
+        {/* ─── 重複レビューパネル ─── */}
+        {showPending && (
+          <div className="rounded-xl border border-amber-200 bg-card overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-amber-200 bg-amber-50/60 dark:bg-amber-900/20">
+              <div className="flex items-center gap-2">
+                <GitMerge className="size-4 text-amber-600" />
+                <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">重複レビュー</span>
+                <span className="text-xs text-amber-600 dark:text-amber-400">
+                  CSVインポート時に保留された重複データ
+                </span>
+                {pendingTotal > 0 && (
+                  <span className="ml-1 text-xs font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-800">
+                    {pendingTotal} 件
+                  </span>
+                )}
+              </div>
+              <Button variant="outline" size="sm" onClick={loadPending} disabled={pendingLoading} className="gap-1.5 border-amber-300 hover:bg-amber-50">
+                <RefreshCw className={`size-3.5 ${pendingLoading ? "animate-spin" : ""}`} />更新
+              </Button>
+            </div>
+
+            {pendingLoading && (
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                <RefreshCw className="size-4 animate-spin inline mr-2" />読み込み中…
+              </div>
+            )}
+
+            {!pendingLoading && pendingGroups.length === 0 && (
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                <Check className="size-4 inline mr-2 text-emerald-500" />保留中の重複データはありません
+              </div>
+            )}
+
+            {!pendingLoading && pendingGroups.length > 0 && (
+              <div className="divide-y divide-amber-100">
+                {pendingGroups.map((group) => {
+                  const isAdopting = adoptingId === group.existingId;
+                  // 全候補カード: [現在のDB情報, ...pending候補]
+                  const cards = [
+                    {
+                      id: null as string | null,
+                      label: "現在の登録情報（DB）",
+                      labelColor: "text-muted-foreground",
+                      headerColor: "bg-muted/30 border-border",
+                      borderColor: "border-border",
+                      bgColor: "bg-muted/10",
+                      fields: [
+                        { label: "氏名", val: group.currentName, base: undefined as string | undefined },
+                        { label: "会社", val: group.currentCompany, base: undefined as string | undefined },
+                        { label: "部署", val: group.currentDepartment, base: undefined as string | undefined },
+                        { label: "電話", val: group.currentPhone, base: undefined as string | undefined },
+                        { label: "メモ", val: group.currentNote, base: undefined as string | undefined },
+                        { label: "タグ", val: group.currentTags, base: undefined as string | undefined },
+                      ],
+                    },
+                    ...group.pending.map((p, i) => ({
+                      id: p.id,
+                      label: group.pending.length === 1 ? "新しい情報（インポート）" : `候補 ${i + 1}（インポート）`,
+                      labelColor: "text-amber-700",
+                      headerColor: "bg-amber-100/50 border-amber-200",
+                      borderColor: "border-amber-200",
+                      bgColor: "bg-amber-50/30 dark:bg-amber-900/10",
+                      fields: [
+                        { label: "氏名", val: p.newName, base: group.currentName },
+                        { label: "会社", val: p.newCompany, base: group.currentCompany },
+                        { label: "部署", val: p.newDepartment, base: group.currentDepartment },
+                        { label: "電話", val: p.newPhone, base: group.currentPhone },
+                        { label: "メモ", val: p.newNote, base: group.currentNote },
+                        { label: "タグ", val: p.newTags, base: group.currentTags },
+                      ],
+                    })),
+                  ];
+
+                  return (
+                    <div key={group.existingId} className="p-4 space-y-3">
+                      {/* メールアドレス */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-medium">{group.email}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">
+                          {group.pending.length + 1} 件の候補
+                        </span>
+                      </div>
+
+                      {/* 候補カード一覧 */}
+                      <div className={`grid gap-3 ${cards.length === 2 ? "grid-cols-2" : cards.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+                        {cards.map((card) => (
+                          <div key={card.id ?? "__existing__"} className={`rounded-lg border ${card.borderColor} ${card.bgColor} overflow-hidden flex flex-col`}>
+                            <div className={`px-3 py-1.5 border-b ${card.headerColor}`}>
+                              <span className={`text-[10px] font-semibold uppercase tracking-wide ${card.labelColor}`}>
+                                {card.label}
+                              </span>
+                            </div>
+                            <div className="px-3 py-2 space-y-1 text-xs flex-1">
+                              {card.fields.map(({ label, val, base }) => {
+                                const isDiff = base !== undefined && val && val !== base;
+                                return (
+                                  <div key={label} className="flex gap-2">
+                                    <span className="w-8 shrink-0 text-muted-foreground">{label}</span>
+                                    <span className={
+                                      !val ? "text-muted-foreground/50 italic"
+                                        : isDiff ? "font-medium text-amber-800 dark:text-amber-300"
+                                          : "text-foreground"
+                                    }>
+                                      {val || "—"}
+                                    </span>
+                                    {isDiff && <span className="text-[9px] text-amber-500 shrink-0">変更あり</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {/* 採用ボタン */}
+                            <div className="px-3 py-2 border-t border-border/50">
+                              <Button
+                                size="sm"
+                                variant={card.id === null ? "outline" : "default"}
+                                disabled={isAdopting}
+                                onClick={() => adoptData(group.existingId, card.id)}
+                                className="w-full h-7 text-xs gap-1"
+                              >
+                                <Check className="size-3" />
+                                {isAdopting ? "処理中…" : "このデータを採用"}
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ─── スマートタグパネル ─── */}
         {showSmartTag && (
           <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -615,21 +850,32 @@ export default function NewsletterPage() {
               </div>
 
               {/* タグ名・付与 */}
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="space-y-1 flex-1 min-w-48">
+              <div className="space-y-2">
+                <div className="space-y-1">
                   <label className="text-xs font-medium text-muted-foreground">付与するタグ名</label>
                   <Input
                     value={smartTagName}
                     onChange={(e) => setSmartTagName(e.target.value)}
-                    placeholder="例: WHGC会員企業"
+                    placeholder="例: WHGC会員企業, 会員, 2025年度"
                     className="h-9 text-sm"
                   />
+                  <p className="text-xs text-muted-foreground">カンマ区切りで複数のタグを一括付与できます</p>
                 </div>
+                {/* 入力済みタグのプレビューチップ */}
+                {smartTagName.trim() && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {smartTagName.split(/[,、\n]+/).map((t) => t.trim()).filter(Boolean).map((tag) => (
+                      <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-xs text-primary font-medium">
+                        <Tag className="size-2.5" />{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <Button
                   size="sm"
                   onClick={applySmartTag}
                   disabled={smartTagApplying || !smartTagName.trim()}
-                  className="gap-1.5 h-9"
+                  className="gap-1.5"
                 >
                   <Tag className="size-3.5" />{smartTagApplying ? "付与中…" : "タグを付与"}
                 </Button>
@@ -828,13 +1074,22 @@ export default function NewsletterPage() {
                 <p className="text-xs text-muted-foreground mt-1">全インポート行に共通で付与するタグ</p>
               </div>
               {importResult && (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20 p-4">
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20 p-4 space-y-2">
                   <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">インポート完了</p>
-                  <div className="mt-1 text-sm text-emerald-600 dark:text-emerald-300 space-y-0.5">
-                    <p>追加: <strong>{importResult.imported}</strong> 件</p>
-                    <p>スキップ（重複）: <strong>{importResult.skipped}</strong> 件</p>
+                  <div className="text-sm text-emerald-600 dark:text-emerald-300 space-y-0.5">
+                    <p>新規追加: <strong>{importResult.imported}</strong> 件</p>
+                    <p>重複保留: <strong>{importResult.pending}</strong> 件</p>
                     <p>合計: <strong>{importResult.total}</strong> 件</p>
                   </div>
+                  {(importResult.pending ?? 0) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => { setShowImport(false); setImportResult(null); setShowPending(true); loadPending(); }}
+                      className="flex items-center gap-1.5 text-xs font-medium text-amber-700 hover:text-amber-900 underline"
+                    >
+                      <GitMerge className="size-3.5" />重複 {importResult.pending} 件を確認する →
+                    </button>
+                  )}
                 </div>
               )}
             </div>

@@ -9,7 +9,7 @@ import {
   RefreshCw, Plus, Trash2, Users, Building2, CalendarCheck, Tag, Sparkles,
   X, Search, CheckSquare, Square, ChevronLeft, ChevronRight,
   ShieldCheck, AlertTriangle, ArrowLeftRight, Send, Clock, FileText,
-  Eye, Settings, StopCircle,
+  Eye, Settings, StopCircle, Check, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { buildPreviewHtml } from "@/lib/email/client-preview";
 
@@ -17,7 +17,8 @@ import { buildPreviewHtml } from "@/lib/email/client-preview";
 type ConditionDomain  = { type: "domain";  domains: string[] };
 type ConditionEvent   = { type: "event";   seminar_id: string; seminar_title: string; attendance_type: "registered" | "attended" };
 type ConditionKeyword = { type: "keyword"; field: "department" | "company"; keywords: string[] };
-type ListCondition = ConditionDomain | ConditionEvent | ConditionKeyword;
+type ConditionTag     = { type: "tag";     tags: string[] };
+type ListCondition = ConditionDomain | ConditionEvent | ConditionKeyword | ConditionTag;
 
 interface NewsletterList {
   id: string;
@@ -84,6 +85,7 @@ function conditionLabel(c: ListCondition): string {
   if (c.type === "domain")  return `ドメイン: ${c.domains.join(", ")}`;
   if (c.type === "event")   return `${c.attendance_type === "attended" ? "出席" : "参加登録"}: ${c.seminar_title || c.seminar_id}`;
   if (c.type === "keyword") return `${c.field === "department" ? "部署" : "会社"}: ${c.keywords.join(", ")}`;
+  if (c.type === "tag")     return `スマートタグ: ${c.tags.join(", ")}`;
   return "";
 }
 
@@ -399,17 +401,19 @@ export default function NewsletterListPage() {
 // リストビルダー（メンバー管理）
 // ═══════════════════════════════════════════════════════════
 function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onClose: () => void }) {
-  const isNew = !initial;
-  const listId = initial?.id ?? null;
+  // 新規作成後は currentListId が設定され、isNew が false に変わる
+  const [currentListId, setCurrentListId] = useState<string | null>(initial?.id ?? null);
+  const isNew = !currentListId;
+  const listId = currentListId;
 
   // ─ 基本情報 ─
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [saving, setSaving] = useState(false);
 
-  // ─ 絞り込み条件 ─
-  const [conditions, setConditions] = useState<ListCondition[]>([]);
-  const [addingType, setAddingType] = useState<"domain" | "event" | "keyword" | null>(null);
+  // ─ 絞り込み条件 ─ initial から読み込む
+  const [conditions, setConditions] = useState<ListCondition[]>(initial?.conditions ?? []);
+  const [addingType, setAddingType] = useState<"domain" | "event" | "keyword" | "tag" | null>(null);
   const [domainInput, setDomainInput] = useState("");
   const [seminars, setSeminars] = useState<Seminar[]>([]);
   const [loadingSeminars, setLoadingSeminars] = useState(false);
@@ -421,6 +425,21 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [pendingKeywords, setPendingKeywords] = useState<string[]>([]);
+
+  // ─ スマートタグ絞り込み ─
+  const [availableTags, setAvailableTags] = useState<{ tag: string; count: number }[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // ─ スマートタグ付与パネル ─
+  const [showSmartTag, setShowSmartTag] = useState(false);
+  const [smartTagRule, setSmartTagRule] = useState("member_domain");
+  const [smartTagTenant, setSmartTagTenant] = useState("whgc-seminars");
+  const [smartTagName, setSmartTagName] = useState("");
+  const [smartTagPreviewCount, setSmartTagPreviewCount] = useState<number | null>(null);
+  const [smartTagPreviewList, setSmartTagPreviewList] = useState<{ id: string; email: string; name: string; company: string; department: string }[]>([]);
+  const [showSmartTagList, setShowSmartTagList] = useState(false);
+  const [smartTagPreviewing, setSmartTagPreviewing] = useState(false);
+  const [smartTagApplying, setSmartTagApplying] = useState(false);
 
   // ─ 検索結果 ─
   const [searching, setSearching] = useState(false);
@@ -598,6 +617,62 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
     setKwInput(""); setPendingKeywords([]); setAiSuggestions([]); setAddingType(null); setSearchResult(null);
   }
 
+  function addTagCondition() {
+    if (selectedTags.length === 0) { toast.error("タグを選択してください"); return; }
+    setConditions((prev) => [...prev, { type: "tag", tags: selectedTags }]);
+    setSelectedTags([]); setAddingType(null); setSearchResult(null);
+  }
+
+  async function loadAvailableTags() {
+    try {
+      const res = await fetch("/api/newsletter/tags");
+      if (res.ok) setAvailableTags(await res.json());
+    } catch { /* ignore */ }
+  }
+
+  // ─ スマートタグ プレビュー ─
+  async function previewSmartTag() {
+    setSmartTagPreviewing(true);
+    setSmartTagPreviewCount(null);
+    setSmartTagPreviewList([]);
+    setShowSmartTagList(false);
+    try {
+      const res = await fetch("/api/newsletter/subscribers/bulk-tag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rule: smartTagRule, tenant: smartTagTenant, preview: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSmartTagPreviewCount(data.count);
+      setSmartTagPreviewList(data.subscribers ?? []);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "プレビューに失敗しました"); }
+    finally { setSmartTagPreviewing(false); }
+  }
+
+  // ─ スマートタグ 付与（複数タグ対応） ─
+  async function applySmartTag() {
+    const tagNames = smartTagName.split(/[,、\n]+/).map((t) => t.trim()).filter(Boolean);
+    if (tagNames.length === 0) { toast.error("タグ名を入力してください"); return; }
+    setSmartTagApplying(true);
+    try {
+      const res = await fetch("/api/newsletter/subscribers/bulk-tag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rule: smartTagRule, tenant: smartTagTenant, tagNames }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const tagLabel = tagNames.length === 1 ? `「${tagNames[0]}」` : `${tagNames.length} 種類のタグ`;
+      toast.success(`${data.tagged} 件に${tagLabel}を付与しました`);
+      setSmartTagName("");
+      setSmartTagPreviewCount(null);
+      // タグ一覧を再取得（絞り込みチップに反映）
+      loadAvailableTags();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "タグ付与に失敗しました"); }
+    finally { setSmartTagApplying(false); }
+  }
+
   async function requestAiSuggest() {
     if (!aiQuery.trim()) { toast.error("検索したい条件を入力してください"); return; }
     setAiSuggesting(true); setAiSuggestions([]);
@@ -754,19 +829,21 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
     setSaving(true);
     try {
       if (isNew) {
+        // 新規作成：POST してそのまま編集継続（閉じない）
         const res = await fetch("/api/newsletter/lists", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, description, conditions: [] }),
+          body: JSON.stringify({ name, description, conditions }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error();
-        toast.success("リストを作成しました。メンバーを追加できます。");
-        // 作成後、編集モードで続行
-        onClose();
+        // 作成後は編集モードに移行（エディターは閉じない）
+        setCurrentListId(data.id);
+        toast.success("リストを作成しました。引き続きメンバーを追加できます。");
       } else {
+        // 編集保存：PUT して閉じる
         const res = await fetch(`/api/newsletter/lists/${listId}`, {
           method: "PUT", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, description, conditions: [], preview_count: memberTotal }),
+          body: JSON.stringify({ name, description, conditions, preview_count: memberTotal }),
         });
         if (!res.ok) throw new Error();
         toast.success("保存しました");
@@ -819,6 +896,146 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
       </div>
 
       {/* ─────────────────────────────── */}
+      {/* スマートタグ付与パネル */}
+      {/* ─────────────────────────────── */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowSmartTag((v) => !v)}
+          className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-muted/20 transition-colors"
+        >
+          <Sparkles className="size-4 text-primary shrink-0" />
+          <span className="text-sm font-semibold">スマートタグ</span>
+          <span className="text-xs text-muted-foreground ml-1">条件に合う購読者に一括でタグを付与</span>
+          <span className="ml-auto">{showSmartTag ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}</span>
+        </button>
+
+        {showSmartTag && (
+          <div className="border-t border-border p-4 space-y-4">
+            {/* ルール・テナント選択 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">抽出ルール</label>
+                <select
+                  value={smartTagRule}
+                  onChange={(e) => { setSmartTagRule(e.target.value); setSmartTagPreviewCount(null); }}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="member_domain">会員企業ドメインと一致するメールアドレス</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">テナント（ドメイン参照元）</label>
+                <select
+                  value={smartTagTenant}
+                  onChange={(e) => { setSmartTagTenant(e.target.value); setSmartTagPreviewCount(null); }}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="whgc-seminars">WHGC セミナー</option>
+                  <option value="kgri-pic-center">KGRI PIC センター</option>
+                  <option value="aff-events">AFF イベント</option>
+                  <option value="pic-courses">PIC コース</option>
+                </select>
+              </div>
+            </div>
+
+            {/* プレビュー */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 flex-wrap">
+                <Button variant="outline" size="sm" onClick={previewSmartTag} disabled={smartTagPreviewing} className="gap-1.5">
+                  <Search className="size-3.5" />{smartTagPreviewing ? "検索中…" : "対象者を確認"}
+                </Button>
+                {smartTagPreviewCount !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSmartTagList((v) => !v)}
+                    className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                      smartTagPreviewCount > 0
+                        ? "text-primary hover:text-primary/80"
+                        : "text-muted-foreground cursor-default"
+                    }`}
+                  >
+                    {smartTagPreviewCount > 0
+                      ? `${smartTagPreviewCount.toLocaleString()} 件が対象です`
+                      : "対象者が見つかりませんでした"}
+                    {smartTagPreviewCount > 0 && (
+                      showSmartTagList
+                        ? <ChevronUp className="size-3.5" />
+                        : <ChevronDown className="size-3.5" />
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* 対象者リスト */}
+              {showSmartTagList && smartTagPreviewList.length > 0 && (
+                <div className="rounded-lg border border-primary/20 overflow-hidden">
+                  <div className="px-3 py-2 bg-primary/5 border-b border-primary/10 flex items-center gap-2">
+                    <Tag className="size-3 text-primary" />
+                    <span className="text-xs font-medium text-primary">対象者一覧</span>
+                  </div>
+                  <div className="overflow-x-auto max-h-56 overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/20 text-left">
+                          <th className="px-3 py-2 font-medium text-muted-foreground">メールアドレス</th>
+                          <th className="px-3 py-2 font-medium text-muted-foreground">氏名</th>
+                          <th className="px-3 py-2 font-medium text-muted-foreground">会社・部署</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {smartTagPreviewList.map((s) => (
+                          <tr key={s.id} className="hover:bg-muted/20">
+                            <td className="px-3 py-2 font-mono">{s.email}</td>
+                            <td className="px-3 py-2">{s.name || "—"}</td>
+                            <td className="px-3 py-2 text-muted-foreground">
+                              {s.company}
+                              {s.department && <span className="ml-1 opacity-70">/ {s.department}</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* タグ名・付与 */}
+            <div className="space-y-2">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">付与するタグ名</label>
+                <Input
+                  value={smartTagName}
+                  onChange={(e) => setSmartTagName(e.target.value)}
+                  placeholder="例: WHGC会員企業, 会員, 2025年度"
+                  className="h-9 text-sm"
+                />
+                <p className="text-xs text-muted-foreground">カンマ区切りで複数のタグを一括付与できます</p>
+              </div>
+              {smartTagName.trim() && (
+                <div className="flex flex-wrap gap-1.5">
+                  {smartTagName.split(/[,、\n]+/).map((t) => t.trim()).filter(Boolean).map((tag) => (
+                    <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-xs text-primary font-medium">
+                      <Tag className="size-2.5" />{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <Button
+                size="sm"
+                onClick={applySmartTag}
+                disabled={smartTagApplying || !smartTagName.trim()}
+                className="gap-1.5"
+              >
+                <Tag className="size-3.5" />{smartTagApplying ? "付与中…" : "タグを付与"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ─────────────────────────────── */}
       {/* STEP 1: 絞り込みで検索 */}
       {/* ─────────────────────────────── */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-4">
@@ -861,6 +1078,9 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
             <Button variant="outline" size="sm" onClick={() => setAddingType("keyword")} className="gap-1.5">
               <Tag className="size-3.5" />部署・会社キーワード
             </Button>
+            <Button variant="outline" size="sm" onClick={() => { setAddingType("tag"); loadAvailableTags(); }} className="gap-1.5">
+              <Sparkles className="size-3.5" />スマートタグ
+            </Button>
           </div>
         ) : (
           <div className="rounded-lg border border-border bg-muted/10 p-3 space-y-3">
@@ -869,6 +1089,7 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
                 {addingType === "domain"  && "会社ドメインで絞り込み"}
                 {addingType === "event"   && "イベント参加履歴で絞り込み"}
                 {addingType === "keyword" && "部署・会社キーワードで絞り込み"}
+                {addingType === "tag"     && "スマートタグで絞り込み"}
               </p>
               <button onClick={() => setAddingType(null)} className="text-muted-foreground hover:text-foreground">
                 <X className="size-4" />
@@ -968,6 +1189,48 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
                 )}
                 <Button size="sm" onClick={addKeywordCondition} disabled={pendingKeywords.length === 0 && !kwInput.trim()}>
                   条件を設定
+                </Button>
+              </div>
+            )}
+
+            {addingType === "tag" && (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  選択したタグを持つ購読者を絞り込みます（複数選択は OR 結合）
+                </p>
+                {availableTags.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">タグが登録されていません</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                    {availableTags.map(({ tag, count }) => {
+                      const selected = selectedTags.includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => setSelectedTags((prev) =>
+                            prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                          )}
+                          className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                            selected
+                              ? "border-primary bg-primary/10 text-primary font-medium"
+                              : "border-border bg-background hover:bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          <Tag className="size-2.5" />{tag}
+                          <span className="opacity-60">({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {selectedTags.length > 0 && (
+                  <p className="text-xs text-primary font-medium">
+                    選択中: {selectedTags.join("、")}
+                  </p>
+                )}
+                <Button size="sm" onClick={addTagCondition} disabled={selectedTags.length === 0} className="gap-1.5">
+                  <Sparkles className="size-3.5" />条件を設定
                 </Button>
               </div>
             )}
