@@ -822,7 +822,7 @@ export default function NewsletterPage() {
                       <Tag className="size-3 text-primary" />
                       <span className="text-xs font-medium text-primary">対象者一覧</span>
                     </div>
-                    <div className="overflow-x-auto max-h-56 overflow-y-auto">
+                    <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="border-b border-border bg-muted/20 text-left">

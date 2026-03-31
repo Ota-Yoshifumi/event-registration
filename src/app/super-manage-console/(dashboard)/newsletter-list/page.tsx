@@ -440,6 +440,8 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
   const [showSmartTagList, setShowSmartTagList] = useState(false);
   const [smartTagPreviewing, setSmartTagPreviewing] = useState(false);
   const [smartTagApplying, setSmartTagApplying] = useState(false);
+  const [smartTagSelectedIds, setSmartTagSelectedIds] = useState<Set<string>>(new Set());
+  const [smartTagAddingMembers, setSmartTagAddingMembers] = useState(false);
 
   // ─ 検索結果 ─
   const [searching, setSearching] = useState(false);
@@ -635,6 +637,7 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
     setSmartTagPreviewing(true);
     setSmartTagPreviewCount(null);
     setSmartTagPreviewList([]);
+    setSmartTagSelectedIds(new Set());
     setShowSmartTagList(false);
     try {
       const res = await fetch("/api/newsletter/subscribers/bulk-tag", {
@@ -646,8 +649,33 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
       if (!res.ok) throw new Error(data.error);
       setSmartTagPreviewCount(data.count);
       setSmartTagPreviewList(data.subscribers ?? []);
+      // プレビュー後は自動で展開
+      if ((data.count ?? 0) > 0) setShowSmartTagList(true);
     } catch (e) { toast.error(e instanceof Error ? e.message : "プレビューに失敗しました"); }
     finally { setSmartTagPreviewing(false); }
+  }
+
+  // ─ スマートタグ 選択者をリストに追加 ─
+  async function addSmartTagSelectedToList() {
+    if (!listId) { toast.error("先にリストを保存してください"); return; }
+    if (smartTagSelectedIds.size === 0) { toast.error("追加する対象を選択してください"); return; }
+    setSmartTagAddingMembers(true);
+    try {
+      const res = await fetch(`/api/newsletter/lists/${listId}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriber_ids: [...smartTagSelectedIds] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(`${data.added} 件をリストに追加しました`);
+      setSmartTagSelectedIds(new Set());
+      await loadMembers(1);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "追加に失敗しました");
+    } finally {
+      setSmartTagAddingMembers(false);
+    }
   }
 
   // ─ スマートタグ 付与（複数タグ対応） ─
@@ -700,7 +728,8 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
   async function runSearch(page = 1) {
     setSearching(true);
     setSearchResult(null);
-    setSelectedIds(new Set());
+    // page=1（新規検索）の時のみ選択をリセット。ページ送りでは引き継ぐ
+    if (page === 1) setSelectedIds(new Set());
     try {
       const res = await fetch("/api/newsletter/subscribers/search", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -967,35 +996,82 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
                 )}
               </div>
 
-              {/* 対象者リスト */}
+              {/* 対象者リスト（チェックボックス付き） */}
               {showSmartTagList && smartTagPreviewList.length > 0 && (
                 <div className="rounded-lg border border-primary/20 overflow-hidden">
-                  <div className="px-3 py-2 bg-primary/5 border-b border-primary/10 flex items-center gap-2">
-                    <Tag className="size-3 text-primary" />
-                    <span className="text-xs font-medium text-primary">対象者一覧</span>
+                  {/* ヘッダー: 全件選択 + 選択数表示 */}
+                  <div className="px-3 py-2 bg-primary/5 border-b border-primary/10 flex items-center gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="rounded border-border"
+                        checked={smartTagSelectedIds.size === smartTagPreviewList.length && smartTagPreviewList.length > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSmartTagSelectedIds(new Set(smartTagPreviewList.map((s) => s.id)));
+                          } else {
+                            setSmartTagSelectedIds(new Set());
+                          }
+                        }}
+                      />
+                      <span className="text-xs font-medium text-primary">全件選択</span>
+                    </label>
+                    <span className="text-xs text-muted-foreground">
+                      全 {smartTagPreviewList.length.toLocaleString()} 件
+                      {smartTagPreviewList.length >= 500 && <span className="text-amber-600">（上限 500 件）</span>}
+                    </span>
+                    {smartTagSelectedIds.size > 0 && (
+                      <span className="text-xs text-primary font-semibold ml-auto">
+                        {smartTagSelectedIds.size.toLocaleString()} 件選択中
+                      </span>
+                    )}
                   </div>
-                  <div className="overflow-x-auto max-h-56 overflow-y-auto">
+                  <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                     <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-border bg-muted/20 text-left">
-                          <th className="px-3 py-2 font-medium text-muted-foreground">メールアドレス</th>
-                          <th className="px-3 py-2 font-medium text-muted-foreground">氏名</th>
-                          <th className="px-3 py-2 font-medium text-muted-foreground">会社・部署</th>
-                        </tr>
-                      </thead>
                       <tbody className="divide-y divide-border">
-                        {smartTagPreviewList.map((s) => (
-                          <tr key={s.id} className="hover:bg-muted/20">
-                            <td className="px-3 py-2 font-mono">{s.email}</td>
-                            <td className="px-3 py-2">{s.name || "—"}</td>
-                            <td className="px-3 py-2 text-muted-foreground">
-                              {s.company}
-                              {s.department && <span className="ml-1 opacity-70">/ {s.department}</span>}
-                            </td>
-                          </tr>
-                        ))}
+                        {smartTagPreviewList.map((s) => {
+                          const checked = smartTagSelectedIds.has(s.id);
+                          return (
+                            <tr
+                              key={s.id}
+                              className={`cursor-pointer transition-colors hover:bg-muted/20 ${checked ? "bg-primary/5" : ""}`}
+                              onClick={() => setSmartTagSelectedIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(s.id)) next.delete(s.id); else next.add(s.id);
+                                return next;
+                              })}
+                            >
+                              <td className="w-8 px-3 py-2 text-center">
+                                {checked
+                                  ? <CheckSquare className="size-3.5 text-primary mx-auto" />
+                                  : <Square className="size-3.5 text-muted-foreground mx-auto" />}
+                              </td>
+                              <td className="px-3 py-2 font-mono">{s.email}</td>
+                              <td className="px-3 py-2">{s.name || "—"}</td>
+                              <td className="px-3 py-2 text-muted-foreground">
+                                {s.company}
+                                {s.department && <span className="ml-1 opacity-70">/ {s.department}</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
+                  </div>
+                  {/* リストに追加ボタン */}
+                  <div className="px-3 py-2.5 border-t border-primary/10 bg-primary/5 flex items-center gap-3">
+                    <Button
+                      size="sm"
+                      onClick={addSmartTagSelectedToList}
+                      disabled={smartTagSelectedIds.size === 0 || smartTagAddingMembers || !listId}
+                      className="gap-1.5"
+                    >
+                      <Users className="size-3.5" />
+                      {smartTagAddingMembers ? "追加中…" : `選択した ${smartTagSelectedIds.size} 件をリストに追加`}
+                    </Button>
+                    {!listId && (
+                      <span className="text-xs text-muted-foreground">※ 先にリストを保存してください</span>
+                    )}
                   </div>
                 </div>
               )}

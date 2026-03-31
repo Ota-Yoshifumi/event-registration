@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
         .prepare(
           `SELECT id, email, name, company, department
            FROM newsletter_subscribers WHERE (${domainConditions})
-           ORDER BY company, email`
+           ORDER BY company, email
+           LIMIT 500`
         )
         .bind(...domainBinds)
         .all();
