@@ -157,7 +157,8 @@ export async function POST(
 
     if (messages.length > 0) {
       const { data: batchData, error } = await resend.batch.send(messages);
-      const data = batchData as Array<{ id?: string }> | null;
+      // batch.send は { data: [{id: "..."}] } を返すため .data で配列を取り出す
+      const data = ((batchData as any)?.data ?? []) as Array<{ id?: string }>;
 
       if (error) {
         // バッチ全体が失敗
