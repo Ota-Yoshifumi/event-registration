@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   const eventType = payload.type as string;
   const data = payload.data as Record<string, any>;
   const resendMsgId = (data.email_id ?? data.id ?? "") as string;
-  const email       = (data.to ?? "") as string;
+  const email       = Array.isArray(data.to) ? (data.to[0] ?? "") : (data.to ?? "") as string;
   const occurredAt  = (data.created_at ?? new Date().toISOString()) as string;
   const clickUrl    = (data.click?.link ?? "") as string;
 
