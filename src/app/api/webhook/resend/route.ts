@@ -72,6 +72,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // email_send_logs の配信ステータスを更新（resend_id で照合）
+    if (resendMsgId) {
+      if (eventType === "email.delivered") {
+        await db.prepare(
+          `UPDATE email_send_logs SET delivered_at = ? WHERE resend_id = ? AND delivered_at IS NULL`
+        ).bind(occurredAt, resendMsgId).run();
+      } else if (eventType === "email.opened") {
+        await db.prepare(
+          `UPDATE email_send_logs SET opened_at = ? WHERE resend_id = ? AND opened_at IS NULL`
+        ).bind(occurredAt, resendMsgId).run();
+      } else if (eventType === "email.bounced") {
+        await db.prepare(
+          `UPDATE email_send_logs SET bounced_at = ?, status = 'bounced' WHERE resend_id = ?`
+        ).bind(occurredAt, resendMsgId).run();
+      } else if (eventType === "email.complained") {
+        await db.prepare(
+          `UPDATE email_send_logs SET status = 'complained' WHERE resend_id = ?`
+        ).bind(resendMsgId).run();
+      }
+    }
+
     return NextResponse.json({ received: true });
   } catch (err) {
     console.error("[webhook/resend] DB エラー:", err);
