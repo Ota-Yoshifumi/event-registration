@@ -186,15 +186,17 @@ export async function resolveListConditions(
     return { count: 0, samples: [] };
   }
 
-  // candidate IDs からカウントとサンプルを取得
+  // candidate IDs からカウントとサンプルを取得（D1 bind 上限 100 対応）
   const idList = [...candidateIds];
-  const placeholders = idList.map(() => "?").join(", ");
-
   const count = idList.length;
+
+  // サンプルは先頭の最大 (sampleLimit) 件を取得。bind 上限に収まる件数で十分
+  const sampleIds = idList.slice(0, Math.min(sampleLimit, 99));
+  const ph = sampleIds.map(() => "?").join(", ");
   const sampleRows = await db.prepare(
     `SELECT email, name, company FROM newsletter_subscribers
-     WHERE id IN (${placeholders}) ORDER BY created_at ASC LIMIT ?`
-  ).bind(...idList, sampleLimit).all() as any;
+     WHERE id IN (${ph}) ORDER BY created_at ASC LIMIT ?`
+  ).bind(...sampleIds, sampleLimit).all() as any;
 
   return { count, samples: sampleRows.results ?? [] };
 }

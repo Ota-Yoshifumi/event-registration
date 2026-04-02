@@ -4,14 +4,20 @@
     {
       "name": "Next.js Dev Server",
       "runtimeExecutable": "/usr/local/bin/node",
-      "runtimeArgs": ["/usr/local/bin/npm", "run", "dev"],
-      "port": 3000,
-      "autoPort": true
+      "runtimeArgs": [
+        "/Users/Yoshi/Documents/Web-application-development/event-registration/node_modules/.bin/next",
+        "dev",
+        "--webpack",
+        "--port", "3000"
+      ],
+      "cwd": "/Users/Yoshi/Documents/Web-application-development/event-registration",
+      "port": 3000
     },
     {
       "name": "Cloudflare Workers Preview",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "preview"],
+      "runtimeExecutable": "/usr/local/bin/node",
+      "runtimeArgs": ["/usr/local/bin/npm", "run", "preview"],
+      "cwd": "/Users/Yoshi/Documents/Web-application-development/event-registration",
       "port": 8787
     }
   ]
