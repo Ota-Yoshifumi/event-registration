@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getD1 } from "@/lib/d1";
+import { verifyAdminRequest } from "@/lib/auth";
 
 // GET /api/email-results/[scheduleId]
 // 特定スケジュールの受信者ごとの配信ログ詳細
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ scheduleId: string }> }
 ) {
+  const ok = await verifyAdminRequest(request);
+  if (!ok) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+
   const { scheduleId } = await params;
 
   try {

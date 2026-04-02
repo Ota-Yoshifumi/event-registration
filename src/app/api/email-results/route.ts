@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getD1 } from "@/lib/d1";
+import { verifyAdminRequest } from "@/lib/auth";
 
 // GET /api/email-results?tenant=whgc-seminars
 // 配信済みスケジュール一覧（配信回ごとの集計）
 export async function GET(request: NextRequest) {
+  const ok = await verifyAdminRequest(request);
+  if (!ok) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+
   const { searchParams } = new URL(request.url);
   const tenant = searchParams.get("tenant");
 
