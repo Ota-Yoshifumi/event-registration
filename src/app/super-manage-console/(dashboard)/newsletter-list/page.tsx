@@ -99,6 +99,8 @@ export default function NewsletterListPage() {
   const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([]);
   const [previewModal, setPreviewModal] = useState<{ list: NewsletterList; campaign: Campaign } | null>(null);
   const [scheduleModal, setScheduleModal] = useState<NewsletterList | null>(null);
+  const [emailSettingListId, setEmailSettingListId] = useState<string | null>(null);
+  const [emailSettingCampaignId, setEmailSettingCampaignId] = useState("");
   const [schedCampaignId, setSchedCampaignId] = useState("");
   const [schedDateTime, setSchedDateTime] = useState("");
   const [scheduling, setScheduling] = useState(false);
@@ -272,13 +274,25 @@ export default function NewsletterListPage() {
                   </Button>
                 </div>
 
-                {/* 下段: 4ボタン */}
+                {/* 下段: ボタン */}
                 <div className="flex flex-wrap gap-1.5 border-t border-border pt-3">
                   <Button variant="outline" size="sm" onClick={() => setEditingList(list)} className="gap-1.5">
                     <Settings className="size-3.5" />リスト編集
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => openPreviewModal(list)} className="gap-1.5">
-                    <Eye className="size-3.5" />メール確認
+                  <Button
+                    variant="outline" size="sm"
+                    onClick={() => {
+                      if (emailSettingListId === list.id) {
+                        setEmailSettingListId(null);
+                        setEmailSettingCampaignId("");
+                      } else {
+                        setEmailSettingListId(list.id);
+                        setEmailSettingCampaignId("");
+                      }
+                    }}
+                    className="gap-1.5"
+                  >
+                    <FileText className="size-3.5" />メール設定
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => openScheduleModal(list)} className="gap-1.5">
                     <Clock className="size-3.5" />配信予約
@@ -292,6 +306,48 @@ export default function NewsletterListPage() {
                     <StopCircle className="size-3.5" />配信停止
                   </Button>
                 </div>
+
+                {/* メール設定 インライン展開 */}
+                {emailSettingListId === list.id && (
+                  <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                    <select
+                      value={emailSettingCampaignId}
+                      onChange={(e) => setEmailSettingCampaignId(e.target.value)}
+                      className="flex-1 min-w-52 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    >
+                      <option value="">-- メールを選択 --</option>
+                      {allCampaigns.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.subject || "（件名なし）"}
+                          {c.status === "scheduled" && c.list_id === list.id
+                            ? " ［予約済］"
+                            : c.status === "sent"
+                              ? " ［送信済］"
+                              : " ［下書き］"}
+                        </option>
+                      ))}
+                    </select>
+                    {emailSettingCampaignId && (
+                      <Button
+                        variant="outline" size="sm"
+                        onClick={async () => {
+                          const c = allCampaigns.find((c) => c.id === emailSettingCampaignId);
+                          if (!c) return;
+                          try {
+                            const res = await fetch(`/api/newsletter/campaigns/${c.id}`);
+                            const full = await res.json();
+                            setPreviewModal({ list, campaign: { ...c, ...full } });
+                          } catch {
+                            toast.error("メールの取得に失敗しました");
+                          }
+                        }}
+                        className="gap-1.5 shrink-0"
+                      >
+                        <Eye className="size-3.5" />メール確認
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -471,14 +527,6 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
     reversed_names: ReversedName[];
   } | null>(null);
 
-  // ─ 配信設定 ─
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [campaignsLoading, setCampaignsLoading] = useState(false);
-  const [selectedCampaignId, setSelectedCampaignId] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
-  const [scheduling, setScheduling] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [sendProgress, setSendProgress] = useState<{ sent: number; total: number } | null>(null);
 
   const MEMBER_LIMIT = 50;
   const SEARCH_LIMIT = 200;
@@ -503,87 +551,6 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
   useEffect(() => {
     if (listId) loadMembers(1);
   }, [listId, loadMembers]);
-
-  // ─ キャンペーン一覧読み込み ─
-  const loadCampaigns = useCallback(async () => {
-    setCampaignsLoading(true);
-    try {
-      const res = await fetch("/api/newsletter/campaigns");
-      const data = await res.json();
-      const all: Campaign[] = Array.isArray(data) ? data : [];
-      // draft/scheduled のみ表示
-      setCampaigns(all.filter((c) => c.status === "draft" || c.status === "scheduled"));
-    } catch {
-      toast.error("メール一覧の取得に失敗しました");
-    } finally {
-      setCampaignsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (listId) loadCampaigns();
-  }, [listId, loadCampaigns]);
-
-  // ─ 配信予約 ─
-  async function scheduleDelivery() {
-    if (!selectedCampaignId) { toast.error("メールを選択してください"); return; }
-    if (!scheduledAt) { toast.error("配信日時を設定してください"); return; }
-    if (!listId) { toast.error("先にリストを保存してください"); return; }
-    setScheduling(true);
-    try {
-      // scheduled_at は JST 入力 → UTC に変換
-      const utc = new Date(scheduledAt).toISOString();
-      const res = await fetch(`/api/newsletter/campaigns/${selectedCampaignId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ list_id: listId, scheduled_at: utc, status: "scheduled" }),
-      });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "失敗"); }
-      toast.success("配信予約を設定しました");
-      loadCampaigns();
-    } catch (e: any) {
-      toast.error(e.message ?? "配信予約の設定に失敗しました");
-    } finally {
-      setScheduling(false);
-    }
-  }
-
-  // ─ 今すぐ送信 ─
-  async function sendNow() {
-    if (!selectedCampaignId) { toast.error("メールを選択してください"); return; }
-    if (!listId) { toast.error("先にリストを保存してください"); return; }
-    if (!confirm("今すぐ全メンバーに送信しますか？")) return;
-    setSending(true);
-    setSendProgress(null);
-    try {
-      // まず list_id を設定
-      await fetch(`/api/newsletter/campaigns/${selectedCampaignId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ list_id: listId }),
-      });
-      // バッチ送信ループ
-      let offset = 0;
-      while (true) {
-        const res = await fetch(`/api/newsletter/campaigns/${selectedCampaignId}/send`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ offset }),
-        });
-        if (!res.ok) { const d = await res.json(); throw new Error(d.error || "送信失敗"); }
-        const result = await res.json();
-        setSendProgress({ sent: (result.next_offset ?? offset), total: result.total ?? 0 });
-        if (!result.has_more) break;
-        offset = result.next_offset;
-      }
-      toast.success("送信が完了しました");
-      loadCampaigns();
-    } catch (e: any) {
-      toast.error(e.message ?? "送信に失敗しました");
-    } finally {
-      setSending(false);
-    }
-  }
 
   // ─ セミナー一覧読み込み ─
   useEffect(() => {
@@ -1616,107 +1583,6 @@ function ListBuilder({ initial, onClose }: { initial: NewsletterList | null; onC
                 </div>
               )}
             </>
-          )}
-        </div>
-      )}
-
-      {/* ─────────────────────────────── */}
-      {/* STEP 3: 配信設定               */}
-      {/* ─────────────────────────────── */}
-      {listId && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-4">
-          <h2 className="text-sm font-semibold flex items-center gap-2">
-            <Send className="size-4 text-primary" />
-            配信設定
-          </h2>
-
-          {/* キャンペーン選択 */}
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">送信するメールを選択</label>
-            {campaignsLoading ? (
-              <p className="text-xs text-muted-foreground">読み込み中…</p>
-            ) : campaigns.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border p-4 text-center">
-                <FileText className="size-5 mx-auto mb-1.5 text-muted-foreground/50" />
-                <p className="text-xs text-muted-foreground">配信可能なメールがありません</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  メール作成・編集メニューで下書きを作成してください
-                </p>
-              </div>
-            ) : (
-              <select
-                value={selectedCampaignId}
-                onChange={(e) => setSelectedCampaignId(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <option value="">-- メールを選択 --</option>
-                {campaigns.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.subject || "（件名なし）"}
-                    {c.status === "scheduled" && c.list_id === listId
-                      ? ` ［予約済: ${new Date(c.scheduled_at!).toLocaleString("ja-JP")}］`
-                      : c.status === "scheduled"
-                        ? " ［他リストで予約中］"
-                        : " ［下書き］"}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {selectedCampaignId && (
-            <div className="space-y-4 pt-1">
-              {/* 配信予約 */}
-              <div className="rounded-lg border border-border p-3 space-y-3">
-                <p className="text-xs font-medium flex items-center gap-1.5">
-                  <Clock className="size-3.5 text-muted-foreground" />配信日時予約
-                </p>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="datetime-local"
-                    value={scheduledAt}
-                    onChange={(e) => setScheduledAt(e.target.value)}
-                    className="text-sm flex-1"
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={scheduleDelivery}
-                    disabled={scheduling || !scheduledAt}
-                    className="gap-1.5 shrink-0"
-                  >
-                    <Clock className="size-3.5" />
-                    {scheduling ? "設定中…" : "予約を設定"}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  現時刻より 1 時間以降の時間を設定してください（毎時自動実行）
-                </p>
-              </div>
-
-              {/* 今すぐ送信 */}
-              <div className="rounded-lg border border-border p-3 space-y-3">
-                <p className="text-xs font-medium flex items-center gap-1.5">
-                  <Send className="size-3.5 text-muted-foreground" />今すぐ送信
-                </p>
-                <div className="flex items-center gap-3">
-                  <Button
-                    size="sm"
-                    onClick={sendNow}
-                    disabled={sending}
-                    className="gap-1.5"
-                  >
-                    <Send className="size-3.5" />
-                    {sending ? "送信中…" : `このリスト（${memberTotal.toLocaleString()} 件）に送信`}
-                  </Button>
-                  {sendProgress && (
-                    <span className="text-xs text-muted-foreground">
-                      {sendProgress.sent.toLocaleString()} / {sendProgress.total.toLocaleString()} 件送信済み
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
           )}
         </div>
       )}
