@@ -29,6 +29,30 @@ export async function GET(
   }
 }
 
+// DELETE /api/newsletter/campaigns/[id] — 削除（下書き・予約のみ）
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const ok = await verifyAdminRequest(request);
+  if (!ok) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+
+  const { id } = await params;
+  try {
+    const db = await getD1();
+    const result = await db.prepare(
+      `DELETE FROM newsletter_campaigns WHERE id = ? AND status IN ('draft', 'scheduled')`
+    ).bind(id).run();
+    if ((result.meta?.changes ?? 0) === 0) {
+      return NextResponse.json({ error: "削除できません（送信済みまたは存在しません）" }, { status: 400 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[newsletter/campaigns/[id]] DELETE error:", error);
+    return NextResponse.json({ error: "削除に失敗しました" }, { status: 500 });
+  }
+}
+
 // PUT /api/newsletter/campaigns/[id] — 更新（下書き保存）
 export async function PUT(
   request: NextRequest,

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  Save, ChevronRight, RefreshCw, X, FlaskConical, Plus, History, FileEdit, Eye, AlignLeft,
+  Save, ChevronRight, RefreshCw, X, FlaskConical, Plus, History, FileEdit, Eye, AlignLeft, Trash2,
 } from "lucide-react";
 import { TENANT_KEYS, TENANT_LABELS } from "@/lib/tenant-config";
 import type { TenantKey } from "@/lib/tenant-config";
@@ -81,6 +81,22 @@ function ComposeHub() {
   const router = useRouter();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function deleteDraft(id: string) {
+    if (!confirm("この下書きを削除しますか？この操作は取り消せません。")) return;
+    try {
+      const res = await fetch(`/api/newsletter/campaigns/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success("下書きを削除しました");
+      setCampaigns((prev) => prev.filter((c) => c.id !== id));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "削除に失敗しました");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -203,9 +219,20 @@ function ComposeHub() {
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{formatShort(c.updated_at)}</td>
                     <td className="px-4 py-3">
-                      <Link href={`/super-manage-console/newsletter-compose?id=${c.id}`}>
-                        <Button variant="outline" size="sm">編集</Button>
-                      </Link>
+                      <div className="flex items-center gap-2 justify-end">
+                        <Link href={`/super-manage-console/newsletter-compose?id=${c.id}`}>
+                          <Button variant="outline" size="sm">編集</Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={deletingId === c.id}
+                          onClick={() => { setDeletingId(c.id); deleteDraft(c.id); }}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
