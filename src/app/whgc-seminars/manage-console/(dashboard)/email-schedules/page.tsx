@@ -37,6 +37,13 @@ const STATUS_BADGE: Record<string, { label: string; variant: "default" | "second
 
 interface SeminarInfo { id: string; title: string; date: string; status: string; }
 
+interface SendBatchSummary {
+  schedule_id: number;
+  total: number;
+  delivered_count: number;
+  opened_count: number;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SeminarDetail = Record<string, any>;
 
@@ -107,6 +114,7 @@ export default function EmailSchedulesPage() {
   const [groups, setGroups] = useState<SeminarGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "sent">("all");
+  const [resultsMap, setResultsMap] = useState<Record<number, SendBatchSummary>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<{ scheduled_date: string; send_time: string }>({ scheduled_date: "", send_time: "" });
   const [testSendId, setTestSendId] = useState<number | null>(null);
@@ -144,6 +152,19 @@ export default function EmailSchedulesPage() {
       );
       result.sort((a, b) => new Date(a.seminar.date).getTime() - new Date(b.seminar.date).getTime());
       setGroups(result);
+
+      // 配信結果サマリーを取得してスケジュールIDでマップ化
+      try {
+        const resultsRes = await fetch(`/api/email-results?tenant=${TENANT}`);
+        if (resultsRes.ok) {
+          const batches: SendBatchSummary[] = await resultsRes.json();
+          const map: Record<number, SendBatchSummary> = {};
+          for (const b of batches) {
+            map[b.schedule_id] = b;
+          }
+          setResultsMap(map);
+        }
+      } catch { /* サマリー取得失敗は無視 */ }
     } catch {
       toast.error("データの読み込みに失敗しました");
     } finally {
@@ -414,7 +435,14 @@ export default function EmailSchedulesPage() {
                               </>
                             )}
                             {isSent && schedule.sent_at && (
-                              <span className="text-xs text-muted-foreground">{new Date(schedule.sent_at).toLocaleDateString("ja-JP")} 送信済</span>
+                              <>
+                                <span className="text-xs text-muted-foreground">{new Date(schedule.sent_at).toLocaleDateString("ja-JP")} 送信済</span>
+                                {resultsMap[schedule.id] && (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                                    到達 {resultsMap[schedule.id].delivered_count} / {resultsMap[schedule.id].total}
+                                  </span>
+                                )}
+                              </>
                             )}
                           </div>
                         )}

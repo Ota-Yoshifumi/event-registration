@@ -37,42 +37,13 @@ export async function POST(request: NextRequest) {
   const occurredAt  = (data.created_at ?? new Date().toISOString()) as string;
   const clickUrl    = (data.click?.link ?? "") as string;
 
-  // resend_msg_id から campaign_id / subscriber_id を逆引き
-  let campaignId: string | null = null;
-  let subscriberId: string | null = null;
+  console.log(`[webhook/resend] eventType=${eventType} resendMsgId=${resendMsgId}`);
 
   try {
     const db = await getD1();
 
-    const logRow = await db.prepare(
-      `SELECT campaign_id, subscriber_id FROM newsletter_send_logs WHERE resend_id = ? LIMIT 1`
-    ).bind(resendMsgId).first() as any;
-
-    if (logRow) {
-      campaignId   = logRow.campaign_id ?? null;
-      subscriberId = logRow.subscriber_id ?? null;
-    }
-
-    // エンゲージメントログに記録
-    const supportedTypes = ["email.delivered", "email.opened", "email.clicked", "email.bounced", "email.complained"];
-    if (supportedTypes.includes(eventType)) {
-      const shortType = eventType.replace("email.", ""); // "delivered", "opened", ...
-      await db.prepare(
-        `INSERT INTO newsletter_engagement_logs
-           (resend_msg_id, campaign_id, subscriber_id, email, event_type, url, occurred_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
-      ).bind(resendMsgId, campaignId, subscriberId, email, shortType, clickUrl || null, occurredAt).run();
-
-      // バウンス・苦情 → 購読者ステータスを更新
-      if (subscriberId && (shortType === "bounced" || shortType === "complained")) {
-        const newStatus = shortType === "bounced" ? "bounced" : "unsubscribed";
-        await db.prepare(
-          `UPDATE newsletter_subscribers SET status = ?, updated_at = ? WHERE id = ?`
-        ).bind(newStatus, new Date().toISOString(), subscriberId).run();
-      }
-    }
-
-    // email_send_logs の配信ステータスを更新（resend_id で照合）
+    // ① email_send_logs の配信ステータスを最優先で更新（resend_id で照合）
+    // ※ newsletter_engagement_logs 等の処理より先に実行し、独立させる
     if (resendMsgId) {
       if (eventType === "email.delivered") {
         await db.prepare(
@@ -105,6 +76,46 @@ export async function POST(request: NextRequest) {
           `UPDATE newsletter_send_logs SET status = 'complained' WHERE resend_id = ?`
         ).bind(resendMsgId).run();
       }
+    }
+
+    // ② ニュースレター向けのエンゲージメントログ記録（失敗しても ① の結果には影響しない）
+    try {
+      // resend_msg_id から campaign_id / subscriber_id を逆引き
+      let campaignId: string | null = null;
+      let subscriberId: string | null = null;
+
+      if (resendMsgId) {
+        const logRow = await db.prepare(
+          `SELECT campaign_id, subscriber_id FROM newsletter_send_logs WHERE resend_id = ? LIMIT 1`
+        ).bind(resendMsgId).first() as any;
+
+        if (logRow) {
+          campaignId   = logRow.campaign_id ?? null;
+          subscriberId = logRow.subscriber_id ?? null;
+        }
+      }
+
+      const supportedTypes = ["email.delivered", "email.opened", "email.clicked", "email.bounced", "email.complained"];
+      if (supportedTypes.includes(eventType)) {
+        const shortType = eventType.replace("email.", "");
+        // INSERT OR IGNORE で重複登録（Webhook 再試行）に対応
+        await db.prepare(
+          `INSERT OR IGNORE INTO newsletter_engagement_logs
+             (resend_msg_id, campaign_id, subscriber_id, email, event_type, url, occurred_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ).bind(resendMsgId, campaignId, subscriberId, email, shortType, clickUrl || null, occurredAt).run();
+
+        // バウンス・苦情 → 購読者ステータスを更新
+        if (subscriberId && (shortType === "bounced" || shortType === "complained")) {
+          const newStatus = shortType === "bounced" ? "bounced" : "unsubscribed";
+          await db.prepare(
+            `UPDATE newsletter_subscribers SET status = ?, updated_at = ? WHERE id = ?`
+          ).bind(newStatus, new Date().toISOString(), subscriberId).run();
+        }
+      }
+    } catch (engagementErr) {
+      // エンゲージメントログの失敗は無視（email_send_logs の更新は済んでいる）
+      console.error("[webhook/resend] エンゲージメントログ記録エラー:", engagementErr);
     }
 
     return NextResponse.json({ received: true });

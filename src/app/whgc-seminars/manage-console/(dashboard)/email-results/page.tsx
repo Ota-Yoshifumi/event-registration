@@ -24,6 +24,8 @@ import {
 
 const TENANT = "whgc-seminars";
 
+const ANNOUNCE_TEMPLATE_IDS = ["announce_30", "announce_14", "announce_7"];
+
 const TEMPLATE_LABELS: Record<string, string> = {
   announce_30:  "30日前告知",
   announce_14:  "2週間前告知",
@@ -212,13 +214,22 @@ export default function EmailResultsPage() {
                 {group.batches.map((batch) => {
                   const deliverRate = pct(batch.delivered_count, batch.sent_count);
                   const openRate    = pct(batch.opened_count, batch.delivered_count || batch.sent_count);
+                  const isAnnounce  = ANNOUNCE_TEMPLATE_IDS.includes(batch.template_id);
+                  const accentBorder = isAnnounce ? "border-l-orange-400" : "border-l-blue-400";
+                  const categoryBadge = isAnnounce
+                    ? "bg-orange-50 text-orange-700 border-orange-200"
+                    : "bg-blue-50 text-blue-700 border-blue-200";
+                  const categoryLabel = isAnnounce ? "告知集客用" : "予約者向け";
 
                   return (
-                    <Card key={batch.schedule_id} className="admin-card overflow-hidden">
+                    <Card key={batch.schedule_id} className={`admin-card overflow-hidden border-l-4 ${accentBorder}`}>
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
+                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${categoryBadge}`}>
+                                {categoryLabel}
+                              </span>
                               <Badge variant="outline" className="text-xs font-normal">
                                 {TEMPLATE_LABELS[batch.template_id] ?? batch.template_name}
                               </Badge>
