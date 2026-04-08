@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -180,11 +179,9 @@ export default function EmailResultsPage() {
       )}
 
       {!loading && batches.length === 0 && (
-        <Card className="admin-card">
-          <CardContent className="py-12 text-center text-muted-foreground">
-            配信済みのメールはまだありません
-          </CardContent>
-        </Card>
+        <div className="admin-card rounded-lg py-12 text-center text-muted-foreground text-sm">
+          配信済みのメールはまだありません
+        </div>
       )}
 
       {Object.entries(grouped).map(([seminarId, group]) => {
@@ -222,88 +219,40 @@ export default function EmailResultsPage() {
                   const categoryLabel = isAnnounce ? "告知集客用" : "予約者向け";
 
                   return (
-                    <Card key={batch.schedule_id} className={`admin-card overflow-hidden border-l-4 ${accentBorder}`}>
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${categoryBadge}`}>
-                                {categoryLabel}
-                              </span>
-                              <Badge variant="outline" className="text-xs font-normal">
-                                {TEMPLATE_LABELS[batch.template_id] ?? batch.template_name}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {formatJst(batch.sent_at)} 配信
-                              </span>
-                            </div>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="shrink-0 text-xs"
-                            onClick={() => openDetail(batch)}
-                          >
-                            受信者詳細
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        {/* 集計バー */}
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                          <StatCard
-                            icon={<Mail className="size-4 text-blue-500" />}
-                            label="送信数"
-                            value={batch.total}
-                            sub={batch.failed_count > 0 ? `失敗 ${batch.failed_count}` : undefined}
-                            subColor="text-red-500"
-                          />
-                          <StatCard
-                            icon={<MailCheck className="size-4 text-green-500" />}
-                            label="到達"
-                            value={batch.delivered_count}
-                            sub={deliverRate}
-                          />
-                          <StatCard
-                            icon={<MailOpen className="size-4 text-purple-500" />}
-                            label="開封"
-                            value={batch.opened_count}
-                            sub={openRate}
-                          />
-                          <StatCard
-                            icon={<MailX className="size-4 text-red-500" />}
-                            label="バウンス"
-                            value={batch.bounced_count}
-                            sub={pct(batch.bounced_count, batch.total)}
-                          />
-                        </div>
+                    <div key={batch.schedule_id} className={`rounded-lg border border-border border-l-4 ${accentBorder} bg-card px-4 py-2.5 flex items-center gap-4`}>
+                      {/* ラベル・日時 */}
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${categoryBadge}`}>
+                          {categoryLabel}
+                        </span>
+                        <span className="text-xs font-medium text-foreground shrink-0">
+                          {TEMPLATE_LABELS[batch.template_id] ?? batch.template_name}
+                        </span>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {formatJst(batch.sent_at)} 配信
+                        </span>
+                      </div>
 
-                        {/* 進捗バー */}
-                        {batch.total > 0 && (
-                          <div className="mt-3 space-y-1">
-                            <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
-                              <div
-                                className="bg-purple-400 transition-all"
-                                style={{ width: `${(batch.opened_count / batch.total) * 100}%` }}
-                              />
-                              <div
-                                className="bg-green-400 transition-all"
-                                style={{ width: `${((batch.delivered_count - batch.opened_count) / batch.total) * 100}%` }}
-                              />
-                              <div
-                                className="bg-red-400 transition-all"
-                                style={{ width: `${(batch.bounced_count / batch.total) * 100}%` }}
-                              />
-                            </div>
-                            <div className="flex gap-4 text-[10px] text-muted-foreground">
-                              <span className="flex items-center gap-1"><span className="inline-block size-2 rounded-full bg-purple-400" />開封</span>
-                              <span className="flex items-center gap-1"><span className="inline-block size-2 rounded-full bg-green-400" />到達</span>
-                              <span className="flex items-center gap-1"><span className="inline-block size-2 rounded-full bg-red-400" />バウンス</span>
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                      {/* 統計（横並び） */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <StatPill icon={<Mail className="size-3 text-blue-500" />} label="送信" value={batch.total} sub={batch.failed_count > 0 ? `失敗${batch.failed_count}` : undefined} subColor="text-red-500" />
+                        <span className="text-border">／</span>
+                        <StatPill icon={<MailCheck className="size-3 text-green-500" />} label="到達" value={batch.delivered_count} sub={deliverRate} />
+                        <span className="text-border">／</span>
+                        <StatPill icon={<MailOpen className="size-3 text-purple-500" />} label="開封" value={batch.opened_count} sub={openRate} />
+                        <span className="text-border">／</span>
+                        <StatPill icon={<MailX className="size-3 text-red-500" />} label="バウンス" value={batch.bounced_count} sub={pct(batch.bounced_count, batch.total)} />
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 text-xs h-7 px-2.5"
+                        onClick={() => openDetail(batch)}
+                      >
+                        受信者詳細
+                      </Button>
+                    </div>
                   );
                 })}
               </div>
@@ -398,7 +347,7 @@ export default function EmailResultsPage() {
   );
 }
 
-function StatCard({
+function StatPill({
   icon,
   label,
   value,
@@ -412,15 +361,11 @@ function StatCard({
   subColor?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-background p-3">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-        {icon}
-      </div>
-      <div>
-        <p className="text-[10px] text-muted-foreground">{label}</p>
-        <p className="text-xl font-bold leading-tight text-foreground">{value}</p>
-        {sub && <p className={`text-[10px] ${subColor}`}>{sub}</p>}
-      </div>
+    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/40">
+      {icon}
+      <span className="text-[10px] text-muted-foreground">{label}</span>
+      <span className="text-sm font-bold text-foreground tabular-nums">{value}</span>
+      {sub && <span className={`text-[10px] ${subColor}`}>({sub})</span>}
     </div>
   );
 }
