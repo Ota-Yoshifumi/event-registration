@@ -185,7 +185,10 @@ export async function executeListMemberSend(
   const now = new Date().toISOString();
 
   // Resend batch API で100件ずつ送信
+  // resend_id が返らなかったメンバーを再送するためのキュー
+  const retryQueue: { email: string; name: string }[] = [];
   const BATCH_SIZE = 100;
+
   for (let i = 0; i < allMembers.length; i += BATCH_SIZE) {
     const batch = allMembers.slice(i, i + BATCH_SIZE);
     const messages = batch.map((member) => {
@@ -210,16 +213,59 @@ export async function executeListMemberSend(
       for (let j = 0; j < batch.length; j++) {
         const member = batch[j];
         const resendId = sent[j]?.id ?? null;
-        result.success++;
-        result.logs.push({ recipient_email: member.email, recipient_name: member.name, status: "sent", resend_id: resendId });
-        await db.prepare(
-          `INSERT INTO email_send_logs (schedule_id, seminar_id, recipient_email, recipient_name, status, resend_id, sent_at)
-           VALUES (?, ?, ?, ?, 'sent', ?, ?)`
-        ).bind(scheduleId, seminarId, member.email, member.name, resendId, now).run();
+
+        if (resendId) {
+          // Resend から ID が返ってきた → 正常送信
+          result.success++;
+          result.logs.push({ recipient_email: member.email, recipient_name: member.name, status: "sent", resend_id: resendId });
+          await db.prepare(
+            `INSERT INTO email_send_logs (schedule_id, seminar_id, recipient_email, recipient_name, status, resend_id, sent_at)
+             VALUES (?, ?, ?, ?, 'sent', ?, ?)`
+          ).bind(scheduleId, seminarId, member.email, member.name, resendId, now).run();
+        } else {
+          // resend_id が null → Resend に届いていない可能性あり → 再送キューへ
+          console.warn(`[executeListMemberSend] resend_id not returned for ${member.email}, queuing for retry`);
+          retryQueue.push(member);
+        }
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       for (const member of batch) {
+        result.failed++;
+        result.logs.push({ recipient_email: member.email, recipient_name: member.name, status: "failed", error_message: errorMessage });
+        await db.prepare(
+          `INSERT INTO email_send_logs (schedule_id, seminar_id, recipient_email, recipient_name, status, error_message, sent_at)
+           VALUES (?, ?, ?, ?, 'failed', ?, ?)`
+        ).bind(scheduleId, seminarId, member.email, member.name, errorMessage, now).run();
+      }
+    }
+  }
+
+  // バッチで resend_id が取得できなかったメンバーを1件ずつ再送
+  if (retryQueue.length > 0) {
+    console.log(`[executeListMemberSend] Retrying ${retryQueue.length} emails individually`);
+    for (const member of retryQueue) {
+      const vars = { ...seminarVars, name: member.name || "" };
+      const subject = renderTemplate(template.subject, vars).replace(/[\r\n]/g, " ").replace(/\\n/g, " ").trim();
+      const text = renderTemplate(template.body, vars);
+      const html = buildHtmlEmail(text);
+      try {
+        const { data: retryData, error: retryError } = await resend.emails.send({
+          from: `${brand.fromName} <${fromEmail}>`,
+          to: member.email,
+          subject,
+          html,
+          text,
+        });
+        if (retryError) throw new Error(retryError.message);
+        result.success++;
+        result.logs.push({ recipient_email: member.email, recipient_name: member.name, status: "sent", resend_id: retryData?.id });
+        await db.prepare(
+          `INSERT INTO email_send_logs (schedule_id, seminar_id, recipient_email, recipient_name, status, resend_id, sent_at)
+           VALUES (?, ?, ?, ?, 'sent', ?, ?)`
+        ).bind(scheduleId, seminarId, member.email, member.name, retryData?.id ?? null, now).run();
+      } catch (retryErr) {
+        const errorMessage = retryErr instanceof Error ? retryErr.message : String(retryErr);
         result.failed++;
         result.logs.push({ recipient_email: member.email, recipient_name: member.name, status: "failed", error_message: errorMessage });
         await db.prepare(

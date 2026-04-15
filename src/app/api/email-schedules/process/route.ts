@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     const nowJst = new Date(nowUtc.getTime() + jstOffset);
     const todayJst = nowJst.toISOString().slice(0, 10);
     const currentTimeJst = `${String(nowJst.getUTCHours()).padStart(2, "0")}:${String(nowJst.getUTCMinutes()).padStart(2, "0")}`;
+    const nowIso = nowUtc.toISOString();
 
     // 本日送信すべき pending かつ enabled かつ send_time が現在時刻以前のスケジュールを取得
     const rawDue = await db.prepare(
@@ -53,12 +54,27 @@ export async function POST(request: NextRequest) {
     }> = [];
 
     for (const schedule of dueSschedules) {
+      // 二重実行防止: pending → processing にアトミックに更新し、
+      // 別の Cron が先に処理していた場合はスキップする
+      const lockResult = await db.prepare(
+        "UPDATE email_schedules SET status = 'processing', updated_at = ? WHERE id = ? AND status = 'pending'"
+      ).bind(nowIso, schedule.id).run() as any;
+
+      if (!lockResult.meta?.changes || lockResult.meta.changes === 0) {
+        console.log(`[Cron] Schedule ${schedule.id} already being processed by another run, skipping`);
+        continue;
+      }
+
       const template = (await db.prepare(
         "SELECT * FROM email_templates WHERE id = ?"
       ).bind(schedule.template_id).first() as any) as EmailTemplate | null;
 
       if (!template) {
         console.error(`[Cron] Template not found: ${schedule.template_id}`);
+        // テンプレートなし → pending に戻す
+        await db.prepare(
+          "UPDATE email_schedules SET status = 'pending', updated_at = ? WHERE id = ?"
+        ).bind(nowIso, schedule.id).run();
         continue;
       }
 
@@ -69,6 +85,10 @@ export async function POST(request: NextRequest) {
         if (isAnnounce) {
           if (!schedule.list_id) {
             console.error(`[Cron] announce schedule ${schedule.id} has no list_id, skipping`);
+            // list_id なし → pending に戻す
+            await db.prepare(
+              "UPDATE email_schedules SET status = 'pending', updated_at = ? WHERE id = ?"
+            ).bind(nowIso, schedule.id).run();
             continue;
           }
           result = await executeListMemberSend(db, schedule.id, template, schedule.list_id, schedule.seminar_id, null);
@@ -88,6 +108,10 @@ export async function POST(request: NextRequest) {
         );
       } catch (err) {
         console.error(`[Cron] Failed to process schedule ${schedule.id}:`, err);
+        // 送信中に例外 → pending に戻して次回再試行できるようにする
+        await db.prepare(
+          "UPDATE email_schedules SET status = 'pending', updated_at = ? WHERE id = ?"
+        ).bind(nowIso, schedule.id).run();
       }
     }
 
