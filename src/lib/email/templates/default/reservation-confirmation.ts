@@ -13,11 +13,9 @@ export function render(
     seminarDate,
     displayNumber,
     manageUrl,
-    preSurveyUrl,
     meetUrl,
     calendarAddUrl,
     topMessage,
-    hasPreSurvey = true,
   } = data;
   const { contactEmail } = options;
 
@@ -83,18 +81,6 @@ export function render(
       変更・キャンセル
     </a>
 
-    ${hasPreSurvey ? `
-    <div style="background-color: #eff6ff; border-left: 4px solid #2563eb; padding: 15px; margin: 25px 0; border-radius: 4px;">
-      <p style="margin: 0 0 10px 0; font-weight: bold; color: #1e40af;">📋 事前アンケートのお願い</p>
-      <p style="margin: 0 0 15px 0; font-size: 14px;">
-        より充実したセミナーにするため、事前アンケートへのご協力をお願いいたします。
-      </p>
-      <a href="${preSurveyUrl}"
-         style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold;">
-        事前アンケートに回答する
-      </a>
-    </div>
-    ` : ""}
   </div>
 
   <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; font-size: 14px; color: #6b7280;">

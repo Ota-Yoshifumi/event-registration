@@ -1,7 +1,7 @@
 import { getSheetData } from "@/lib/google/sheets";
 import type { SurveyQuestion } from "@/lib/survey-config";
 
-const QUESTION_TYPES = ["rating", "text", "select", "nps"] as const;
+const QUESTION_TYPES = ["rating", "text", "select", "nps", "keywords"] as const;
 
 /**
  * 設問シートの1行を SurveyQuestion に変換する。

@@ -8,6 +8,7 @@ import type { D1Database, EmailTemplate, EmailSchedule } from "@/lib/d1";
 import type { Seminar } from "@/lib/types";
 import { getTheme } from "@/lib/email/themes";
 import { BRAND_CONFIGS, detectBrand } from "@/lib/email/brand";
+import { encodeSurveyToken } from "@/lib/survey-token";
 
 // Re-export for backward compat
 export { BRAND_CONFIGS, detectBrand } from "@/lib/email/brand";
@@ -312,6 +313,7 @@ export async function executeListMemberSend(
 // ---------------------------------------------------------------------------
 
 export interface Participant {
+  id: string;
   name: string;
   email: string;
 }
@@ -320,7 +322,7 @@ export async function getParticipants(seminarId: string): Promise<Participant[]>
   const rows = await getRegistrationsBySeminarFromD1(seminarId);
   return rows
     .filter((r) => r.email && r.status !== "cancelled")
-    .map((r) => ({ name: r.name, email: r.email }));
+    .map((r) => ({ id: r.id, name: r.name, email: r.email }));
 }
 
 // ---------------------------------------------------------------------------
@@ -365,7 +367,9 @@ export async function executeBulkSend(
   const now = new Date().toISOString();
 
   for (const participant of participants) {
-    const vars = { ...seminarVars, name: participant.name };
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://events.allianceforum.org";
+    const postSurveyUrl = `${appUrl}/survey/post/${encodeSurveyToken(seminarId, participant.id)}`;
+    const vars = { ...seminarVars, name: participant.name, survey_url: postSurveyUrl };
     const subject = renderTemplate(template.subject, vars).replace(/[\r\n]/g, " ").replace(/\\n/g, " ").trim();
     const text = renderTemplate(template.body, vars);
     const html = buildHtmlEmail(text);

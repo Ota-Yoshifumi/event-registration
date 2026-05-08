@@ -5,8 +5,6 @@ import { d1SeminarToSeminar } from "@/lib/seminars";
 import { isMemberDomainEmail } from "@/lib/member-domains";
 import { generateReservationNumber } from "@/lib/reservation-number";
 import { isTenantKey, TENANT_KEYS, type TenantKey } from "@/lib/tenant-config";
-import { getSurveyQuestions } from "@/lib/survey/storage";
-import { encodeSurveyToken } from "@/lib/survey-token";
 import { verifyAdminRequest } from "@/lib/auth";
 import { checkBookingRateLimit, checkInvitationCodeRateLimit, getClientIp } from "@/lib/ratelimit";
 import {
@@ -129,17 +127,6 @@ export async function POST(request: NextRequest) {
     const formattedDate = `${dateObj.getFullYear()}年${dateObj.getMonth() + 1}月${dateObj.getDate()}日 ${String(dateObj.getHours()).padStart(2, "0")}:${String(dateObj.getMinutes()).padStart(2, "0")}`;
     const calendarAddUrl = buildCalendarAddUrl(seminar.date, seminar.end_time, seminar.title, seminar.meet_url);
 
-    // 事前アンケート存在確認
-    let hasPreSurvey = false;
-    if (seminar.spreadsheet_id) {
-      try {
-        const preQuestions = await getSurveyQuestions(seminar.spreadsheet_id, "pre");
-        hasPreSurvey = Array.isArray(preQuestions) && preQuestions.length > 0;
-      } catch {
-        hasPreSurvey = false;
-      }
-    }
-
     // 重複申込チェック
     const existingRegs = await getRegistrationsBySeminarFromD1(seminar_id);
     const duplicate = existingRegs.find(
@@ -156,12 +143,10 @@ export async function POST(request: NextRequest) {
             seminarDate: formattedDate,
             reservationNumber: duplicate.reservation_number,
             reservationId: duplicate.id,
-            preSurveyUrl: `${appUrl}/survey/pre/${encodeSurveyToken(seminar_id, duplicate.id)}`,
             manageUrl,
             meetUrl: seminar.meet_url || undefined,
             calendarAddUrl: calendarAddUrl || undefined,
             topMessage: "すでに次の内容で登録されています。変更する場合は、メール内の変更・キャンセルリンクからお手続きください。",
-            hasPreSurvey,
           },
           tenantKey
         );
@@ -231,7 +216,6 @@ export async function POST(request: NextRequest) {
       updated_at: now,
     });
 
-    const preSurveyUrl = `${appUrl}/survey/pre/${encodeSurveyToken(seminar_id, id)}`;
     try {
       await sendReservationConfirmation(
         {
@@ -241,11 +225,9 @@ export async function POST(request: NextRequest) {
           seminarDate: formattedDate,
           reservationNumber,
           reservationId: id,
-          preSurveyUrl,
           manageUrl,
           meetUrl: seminar.meet_url || undefined,
           calendarAddUrl: calendarAddUrl || undefined,
-          hasPreSurvey,
         },
         tenantKey
       );

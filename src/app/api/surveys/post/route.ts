@@ -40,17 +40,13 @@ export async function POST(request: NextRequest) {
     const id = uuidv4();
 
     // 「事後アンケート」シートに追記
-    // 列順: ID, 予約ID, 満足度(1-5), 内容の質(1-5), 登壇者評価(1-5),
-    //       学んだこと, 改善点, 推薦度(0-10), 回答日時, 備考
+    // 列順: ID, 予約ID, 満足度(1-5), キーワード(カンマ区切り), 講師へのメッセージ, 回答日時, 備考
     const row = [
       id,
       reservation_id,
       answers.q1_satisfaction || "",
-      answers.q2_content_quality || "",
-      answers.q3_speaker_rating || "",
-      answers.q4_learnings || "",
-      answers.q5_improvements || "",
-      answers.q6_recommend || "",
+      answers.q2_keywords || "",
+      answers.q3_message || "",
       now,
       "",
     ];

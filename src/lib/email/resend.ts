@@ -28,15 +28,12 @@ export interface ReservationConfirmationData {
   /** 予約番号（例: 2604-a1bc）。表示・変更キャンセル用。空の場合は従来の予約IDを表示 */
   reservationNumber: string;
   reservationId: string;
-  preSurveyUrl: string;
   manageUrl: string;
   meetUrl?: string;
   /** Googleカレンダーに登録するURL（任意） */
   calendarAddUrl?: string;
   /** 重複申込時など、メール先頭に追加する注釈文 */
   topMessage?: string;
-  /** 事前アンケートが作成済みか（falseの場合、アンケートセクションを非表示） */
-  hasPreSurvey?: boolean;
 }
 
 /**
@@ -55,12 +52,10 @@ export async function sendReservationConfirmation(
     seminarDate,
     reservationNumber,
     reservationId,
-    preSurveyUrl,
     manageUrl,
     meetUrl,
     calendarAddUrl,
     topMessage,
-    hasPreSurvey,
   } = data;
   const displayNumber = reservationNumber || reservationId;
 
@@ -77,11 +72,9 @@ export async function sendReservationConfirmation(
       seminarDate,
       displayNumber,
       manageUrl,
-      preSurveyUrl,
       meetUrl,
       calendarAddUrl,
       topMessage,
-      hasPreSurvey: hasPreSurvey ?? true,
     },
     options
   );

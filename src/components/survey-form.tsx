@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { X } from "lucide-react";
 import type { SurveyQuestion } from "@/lib/survey-config";
 
 interface SurveyFormProps {
@@ -35,21 +36,27 @@ function RatingInput({
   const values = Array.from({ length: max - min + 1 }, (_, i) => min + i);
 
   return (
-    <div className="flex gap-2">
-      {values.map((v) => (
-        <button
-          key={v}
-          type="button"
-          onClick={() => onChange(String(v))}
-          className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-medium transition-colors ${
-            value === String(v)
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-gray-300 hover:border-primary hover:bg-primary/10"
-          }`}
-        >
-          {v}
-        </button>
-      ))}
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        {values.map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => onChange(String(v))}
+            className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-medium transition-colors ${
+              value === String(v)
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-gray-300 hover:border-primary hover:bg-primary/10"
+            }`}
+          >
+            {v}
+          </button>
+        ))}
+      </div>
+      <div className="flex justify-between text-xs text-muted-foreground" style={{ width: `${values.length * 48 - 8}px` }}>
+        <span>{min} : あまり良くなかった</span>
+        <span>とても良かった : {max}</span>
+      </div>
     </div>
   );
 }
@@ -89,6 +96,92 @@ function NPSInput({
         <span>全くおすすめしない</span>
         <span>強くおすすめする</span>
       </div>
+    </div>
+  );
+}
+
+function KeywordsInput({
+  question,
+  value,
+  onChange,
+}: {
+  question: SurveyQuestion;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const maxKeywords = question.maxKeywords ?? 5;
+  const keywords = value ? value.split(",").map((k) => k.trim()).filter(Boolean) : [];
+  const [input, setInput] = useState("");
+
+  function addKeyword(raw: string) {
+    const kw = raw.trim();
+    if (!kw) return;
+    if (keywords.length >= maxKeywords) {
+      toast.error(`キーワードは${maxKeywords}つまでです`);
+      return;
+    }
+    if (keywords.includes(kw)) {
+      setInput("");
+      return;
+    }
+    const next = [...keywords, kw];
+    onChange(next.join(","));
+    setInput("");
+  }
+
+  function removeKeyword(kw: string) {
+    const next = keywords.filter((k) => k !== kw);
+    onChange(next.join(","));
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addKeyword(input);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {keywords.map((kw) => (
+          <span
+            key={kw}
+            className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary"
+          >
+            {kw}
+            <button
+              type="button"
+              onClick={() => removeKeyword(kw)}
+              className="ml-1 rounded-full hover:text-destructive"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        ))}
+      </div>
+      {keywords.length < maxKeywords && (
+        <div className="flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={question.placeholder ?? "キーワードを入力してEnterで追加"}
+            className="max-w-xs"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => addKeyword(input)}
+          >
+            追加
+          </Button>
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">
+        {keywords.length} / {maxKeywords} 個
+      </p>
     </div>
   );
 }
@@ -150,6 +243,14 @@ export function SurveyForm({ questions, onSubmit, submitLabel = "送信する" }
 
           {q.type === "nps" && (
             <NPSInput
+              question={q}
+              value={answers[q.id] || ""}
+              onChange={(v) => updateAnswer(q.id, v)}
+            />
+          )}
+
+          {q.type === "keywords" && (
+            <KeywordsInput
               question={q}
               value={answers[q.id] || ""}
               onChange={(v) => updateAnswer(q.id, v)}
