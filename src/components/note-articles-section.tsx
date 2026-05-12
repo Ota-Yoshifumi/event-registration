@@ -33,15 +33,52 @@ function formatRelativeDate(dateStr: string): string {
 
 const NOTE_USER = "whgc_official";
 
+// 固定表示する記事 URL（真ん中・右側）
+const PINNED_MIDDLE_URL = "https://note.com/whgc_official/n/n6fbb7d815872";
+const PINNED_RIGHT_URL = "https://note.com/whgc_official/n/n4e23e4029d03";
+
 export function NoteArticlesSection() {
   const [articles, setArticles] = useState<NoteArticle[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/note-articles?user=${NOTE_USER}&limit=3`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setArticles(data);
+    Promise.all([
+      fetch(`/api/note-articles?user=${NOTE_USER}&limit=10`)
+        .then((res) => res.json())
+        .catch(() => []),
+      fetch(
+        `/api/note-articles/by-url?url=${encodeURIComponent(PINNED_MIDDLE_URL)}`
+      )
+        .then((res) => res.json())
+        .catch(() => null),
+      fetch(
+        `/api/note-articles/by-url?url=${encodeURIComponent(PINNED_RIGHT_URL)}`
+      )
+        .then((res) => res.json())
+        .catch(() => null),
+    ])
+      .then(([list, middle, right]) => {
+        const items: NoteArticle[] = Array.isArray(list) ? list : [];
+        const pinnedUrls = new Set([PINNED_MIDDLE_URL, PINNED_RIGHT_URL]);
+
+        // 左側: 固定 URL 以外の最新記事
+        const leftFromList = items.find((a) => !pinnedUrls.has(a.url));
+
+        // 固定記事のメタ取得に失敗した場合は RSS 内から探す
+        const middleArticle: NoteArticle | null =
+          middle && middle.url
+            ? middle
+            : items.find((a) => a.url === PINNED_MIDDLE_URL) || null;
+        const rightArticle: NoteArticle | null =
+          right && right.url
+            ? right
+            : items.find((a) => a.url === PINNED_RIGHT_URL) || null;
+
+        const result: NoteArticle[] = [];
+        if (leftFromList) result.push(leftFromList);
+        if (middleArticle) result.push(middleArticle);
+        if (rightArticle) result.push(rightArticle);
+        setArticles(result);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
