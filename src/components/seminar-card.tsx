@@ -43,6 +43,7 @@ function resolveImageUrl(url: string | undefined): string {
 
 export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
   const date = new Date(seminar.date);
+  const isCompleted = seminar.status === "completed";
 
   return (
     <motion.div
@@ -62,7 +63,12 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
         }}
         className="cursor-pointer h-full"
       >
-        <Card className="group overflow-hidden hover:shadow-2xl transition-all duration-300 border border-border bg-card flex flex-col h-full">
+        <Card
+          className={[
+            "group overflow-hidden hover:shadow-2xl transition-all duration-300 border border-border bg-card flex flex-col h-full",
+            isCompleted ? "opacity-70 grayscale-[0.15]" : "",
+          ].join(" ")}
+        >
           {/* 画像エリア（16:9、天地合わせ・左右余白白） */}
           <div className="relative flex w-full items-center justify-center overflow-hidden aspect-[16/9] bg-white">
             <img
@@ -73,14 +79,6 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
                 (e.target as HTMLImageElement).src = "/9553.png";
               }}
             />
-            {seminar.status === "completed" && (
-              <Badge
-                variant="destructive"
-                className="absolute right-3 top-3"
-              >
-                開催終了
-              </Badge>
-            )}
           </div>
 
           {/* コンテンツ（block-stack-tight + global.css の行間: line-height 1.5〜1.6） */}
@@ -94,11 +92,16 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
             </p>
 
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-bold leading-relaxed text-foreground">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-bold leading-relaxed text-foreground">
                 <Clock className="w-4 h-4 shrink-0 text-primary" />
                 <span>
                   {format(date, "M月d日(E)HH:mm", { locale: ja })}〜{seminar.end_time || ""}
                 </span>
+                {isCompleted && (
+                  <Badge variant="destructive" className="ml-auto">
+                    開催終了
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-2 text-sm leading-relaxed text-foreground">
                 <MapPin className="w-4 h-4 shrink-0 text-pink-500" />
