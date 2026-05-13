@@ -83,16 +83,28 @@ export async function getSeminarById(id: string): Promise<Seminar | null> {
 }
 
 /**
+ * 公開対象セミナーのソート: 開催終了は末尾に、それ以外は日付昇順
+ */
+function sortPublicSeminars(seminars: Seminar[]): Seminar[] {
+  return seminars.sort((a, b) => {
+    const aCompleted = a.status === "completed";
+    const bCompleted = b.status === "completed";
+    if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
+}
+
+/**
  * デフォルトテナントの公開中セミナー一覧（D1）
+ * 公開中 + 開催終了 の両方を含む（開催終了は受付不可だが一覧には表示する）
  */
 export async function getPublishedSeminars(): Promise<Seminar[]> {
   try {
-    const rows = await getSeminarsByTenantFromD1("default", "published");
-    const seminars = rows.map(d1SeminarToSeminar);
-    seminars.sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-    return seminars;
+    const rows = await getSeminarsByTenantFromD1("default", [
+      "published",
+      "completed",
+    ]);
+    return sortPublicSeminars(rows.map(d1SeminarToSeminar));
   } catch {
     return [];
   }
@@ -100,17 +112,19 @@ export async function getPublishedSeminars(): Promise<Seminar[]> {
 
 /**
  * テナント指定で公開中セミナー一覧（D1）
+ * 公開中 + 開催終了 の両方を含む
  */
 export async function getPublishedSeminarsForTenant(
   tenant: string
 ): Promise<Seminar[]> {
   try {
-    const rows = await getSeminarsByTenantFromD1(tenant, "published");
-    const seminars = rows.map((r) => ({ ...d1SeminarToSeminar(r), tenant }));
-    seminars.sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    const rows = await getSeminarsByTenantFromD1(tenant, [
+      "published",
+      "completed",
+    ]);
+    return sortPublicSeminars(
+      rows.map((r) => ({ ...d1SeminarToSeminar(r), tenant }))
     );
-    return seminars;
   } catch {
     return [];
   }

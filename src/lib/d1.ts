@@ -114,14 +114,24 @@ export async function getSeminarByIdFromD1(id: string): Promise<D1Seminar | null
 
 export async function getSeminarsByTenantFromD1(
   tenant: string,
-  statusFilter?: string
+  statusFilter?: string | string[]
 ): Promise<D1Seminar[]> {
   const db = await getD1();
   let query = "SELECT * FROM seminars WHERE tenant = ?";
   const binds: unknown[] = [tenant];
   if (statusFilter) {
-    query += " AND status = ?";
-    binds.push(statusFilter);
+    if (Array.isArray(statusFilter)) {
+      if (statusFilter.length === 0) {
+        // 空配列は何も返さない
+        return [];
+      }
+      const placeholders = statusFilter.map(() => "?").join(",");
+      query += ` AND status IN (${placeholders})`;
+      binds.push(...statusFilter);
+    } else {
+      query += " AND status = ?";
+      binds.push(statusFilter);
+    }
   }
   query += " ORDER BY date DESC";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

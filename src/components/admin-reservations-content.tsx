@@ -182,13 +182,15 @@ export function AdminReservationsContent({
     draft: "下書き",
     published: "公開中",
     cancelled: "キャンセル済",
-    completed: "終了",
+    completed: "開催終了",
   };
 
-  async function handleStatusChange(id: string, newStatus: "draft" | "published") {
+  type EditableStatus = "draft" | "published" | "completed";
+
+  async function handleStatusChange(id: string, newStatus: EditableStatus) {
     setUpdatingStatusId(id);
     try {
-      const body: { status: "draft" | "published"; tenant?: string } = { status: newStatus };
+      const body: { status: EditableStatus; tenant?: string } = { status: newStatus };
       if (tenant) body.tenant = tenant;
       const res = await fetch(`/api/seminars/${id}`, {
         method: "PUT",
@@ -196,9 +198,13 @@ export function AdminReservationsContent({
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error();
-      toast.success(
-        newStatus === "published" ? "公開しました" : "下書きにしました"
-      );
+      const successLabel =
+        newStatus === "published"
+          ? "公開しました"
+          : newStatus === "completed"
+            ? "開催終了にしました"
+            : "下書きにしました";
+      toast.success(successLabel);
       await loadSeminars();
     } catch {
       toast.error("ステータスの更新に失敗しました");
@@ -438,20 +444,23 @@ export function AdminReservationsContent({
                     </Link>
                   </Button>
                   {s.status !== "cancelled" &&
-                    (s.status === "draft" || s.status === "published" ? (
+                    (s.status === "draft" ||
+                    s.status === "published" ||
+                    s.status === "completed" ? (
                       <Select
                         value={s.status}
                         onValueChange={(v) =>
-                          handleStatusChange(s.id, v as "draft" | "published")
+                          handleStatusChange(s.id, v as EditableStatus)
                         }
                         disabled={updatingStatusId === s.id}
                       >
-                        <SelectTrigger size="sm" className="w-[120px] text-[0.8125rem]">
+                        <SelectTrigger size="sm" className="w-[130px] text-[0.8125rem]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="draft">下書き</SelectItem>
                           <SelectItem value="published">公開中</SelectItem>
+                          <SelectItem value="completed">開催終了</SelectItem>
                         </SelectContent>
                       </Select>
                     ) : (

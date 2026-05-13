@@ -73,6 +73,14 @@ export function SeminarCard({ seminar, index, onSelect }: SeminarCardProps) {
                 (e.target as HTMLImageElement).src = "/9553.png";
               }}
             />
+            {seminar.status === "completed" && (
+              <Badge
+                variant="destructive"
+                className="absolute right-3 top-3"
+              >
+                開催終了
+              </Badge>
+            )}
           </div>
 
           {/* コンテンツ（block-stack-tight + global.css の行間: line-height 1.5〜1.6） */}

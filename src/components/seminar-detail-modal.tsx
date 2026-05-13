@@ -145,6 +145,8 @@ export function SeminarDetailModal({
 
   const isFull = seminar.current_bookings >= seminar.capacity;
   const isPast = new Date(seminar.date) < new Date();
+  const isCompleted = seminar.status === "completed";
+  const isClosed = isFull || isPast || isCompleted;
   const date = new Date(seminar.date);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -252,10 +254,14 @@ export function SeminarDetailModal({
               {formatLabelText(seminar.format)}
             </Badge>
           </div>
-          {(isFull || isPast) && (
+          {isClosed && (
             <div className="pt-2">
               <Badge variant="destructive">
-                {isFull ? "満席" : "終了済み"}
+                {isFull
+                  ? "満席"
+                  : isCompleted
+                    ? "開催終了"
+                    : "終了済み"}
               </Badge>
             </div>
           )}
@@ -351,7 +357,7 @@ export function SeminarDetailModal({
                   </div>
                 </div>
 
-                {!isFull && !isPast ? (
+                {!isClosed ? (
                   <Button
                     size="lg"
                     className="w-full text-white rounded-xl h-14 text-lg font-semibold"
@@ -370,7 +376,11 @@ export function SeminarDetailModal({
                     className="w-full rounded-xl h-14 text-lg font-semibold"
                     disabled
                   >
-                    {isFull ? "満席です" : "開催済みです"}
+                    {isFull
+                      ? "満席です"
+                      : isCompleted
+                        ? "開催終了しました"
+                        : "開催済みです"}
                   </Button>
                 )}
               </div>
